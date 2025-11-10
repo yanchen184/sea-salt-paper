@@ -40,12 +40,13 @@ export default function App() {
     try {
       // Initialize game deck
       const deck = initializeGameDeck();
+      
+      // Import initializeRound to properly set up the game
+      const { initializeRound } = await import('./data/gameRules.js');
+      const gameState = initializeRound(room.players, deck);
 
-      // Start game in Firebase
-      await startGame(roomCode, {
-        deck,
-        players: room.players,
-      });
+      // Start game in Firebase with properly initialized state
+      await startGame(roomCode, gameState);
 
       handleNavigate('game', {
         roomCode,

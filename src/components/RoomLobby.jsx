@@ -115,8 +115,30 @@ export default function RoomLobby({
     }
   };
 
+  console.log('[RoomLobby] Rendering with:', {
+    generatedRoomCode,
+    players,
+    isCreator,
+    playerName,
+    playerId,
+    error,
+  });
+
+  // Add visual debugging
+  if (!playerName || !playerId) {
+    return (
+      <div style={{ color: 'white', fontSize: '32px', padding: '50px' }}>
+        ERROR: Missing playerName or playerId!
+        <br />
+        playerName: {playerName}
+        <br />
+        playerId: {playerId}
+      </div>
+    );
+  }
+
   return (
-    <div className="room-lobby">
+    <div className="room-lobby" style={{ minHeight: '100vh', color: 'white' }}>
       <div className="lobby-header">
         <h1>{isCreator ? 'Create Room' : 'Join Room'}</h1>
         <button className="back-btn" onClick={onBack}>

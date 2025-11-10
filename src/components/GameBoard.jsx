@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/GameBoard.css';
+import { initializeGameDeck } from '../data/cards.js';
 import {
-  initializeGameDeck,
   initializeRound,
   drawFromDeck,
   takeFromDiscardPile,
@@ -16,10 +16,7 @@ import {
   sortHand,
   getCardDisplayName,
 } from '../utils/gameLogic.js';
-import {
-  subscribeToGameState,
-  updateGameState,
-} from '../services/gameService.js';
+import { subscribeToGameState } from '../services/gameService.js';
 import GameBoardHeader from './GameBoardHeader.jsx';
 import CardDisplay from './CardDisplay.jsx';
 import PlayerHand from './PlayerHand.jsx';
@@ -77,15 +74,51 @@ export default function GameBoard({
     return <div className="game-board loading">載入遊戲中...</div>;
   }
 
+  // Safety check: validate game state
+  if (!gameState.players || gameState.players.length === 0) {
+    return (
+      <div className="game-board loading" style={{ color: 'white', padding: '50px' }}>
+        <h2>錯誤：遊戲狀態無效</h2>
+        <p>沒有玩家資料</p>
+        <button onClick={onBack}>返回</button>
+      </div>
+    );
+  }
+
+  if (gameState.currentPlayerIndex < 0 || gameState.currentPlayerIndex >= gameState.players.length) {
+    return (
+      <div className="game-board loading" style={{ color: 'white', padding: '50px' }}>
+        <h2>錯誤：當前玩家索引無效</h2>
+        <p>currentPlayerIndex: {gameState.currentPlayerIndex}</p>
+        <p>玩家數量: {gameState.players.length}</p>
+        <button onClick={onBack}>返回</button>
+      </div>
+    );
+  }
+
   // Get current player and player index
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const playerIndex = gameState.players.findIndex(p => p.id === playerId || p.name === playerName);
+  
+  // Safety check: if player not found, show error
+  if (playerIndex === -1) {
+    return (
+      <div className="game-board loading" style={{ color: 'white', padding: '50px' }}>
+        <h2>錯誤：找不到玩家</h2>
+        <p>playerId: {playerId}</p>
+        <p>playerName: {playerName}</p>
+        <p>玩家列表: {JSON.stringify(gameState.players.map(p => ({ id: p.id, name: p.name })))}</p>
+        <button onClick={onBack}>返回</button>
+      </div>
+    );
+  }
+  
   const isCurrentPlayer = playerIndex === gameState.currentPlayerIndex;
   const currentPlayerHand = sortHand(currentPlayer.hand || []);
 
   // Get UI data
-  const topDiscardPile1 = gameState.discardPiles[0]?.[gameState.discardPiles[0].length - 1];
-  const topDiscardPile2 = gameState.discardPiles[1]?.[gameState.discardPiles[1].length - 1];
+  const topDiscardPile1 = gameState.discardPile1?.[gameState.discardPile1.length - 1];
+  const topDiscardPile2 = gameState.discardPile2?.[gameState.discardPile2.length - 1];
   const playerScore = calculatePlayerScore(gameState.players[playerIndex].hand, false);
   const validPairs = findValidPairs(currentPlayerHand);
   const canDeclareSelf = canDeclare(gameState.players[playerIndex].hand);

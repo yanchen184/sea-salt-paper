@@ -26,7 +26,8 @@ export function getTargetScore(playerCount) {
 export function initializeRound(players, deck) {
   const gameState = {
     deck: [...deck],
-    discardPiles: [[], []],  // Two discard piles
+    discardPile1: [],  // First discard pile
+    discardPile2: [],  // Second discard pile
     players: players.map(player => ({
       ...player,
       hand: [],
@@ -38,14 +39,6 @@ export function initializeRound(players, deck) {
     roundNumber: 0,
     gamePhase: 'drawing', // drawing, declaring, scoring
   };
-
-  // Deal 5 cards to each player
-  players.forEach(() => {
-    for (let i = 0; i < 5; i++) {
-      const card = gameState.deck.pop();
-      gameState.players[gameState.players.length - 1 - Math.floor(i / 5)].hand.push(card);
-    }
-  });
 
   // Actually, properly distribute
   gameState.deck = [...deck];
@@ -212,10 +205,11 @@ export function drawFromDeck(gameState, discardPileIndex, keepCardIndex) {
   // Draw 2 cards
   if (newState.deck.length < 2) {
     // Reshuffle discard pile if deck too small
-    const allDiscarded = [...newState.discardPiles[0], ...newState.discardPiles[1]];
+    const allDiscarded = [...newState.discardPile1, ...newState.discardPile2];
     if (allDiscarded.length > 0) {
       newState.deck = [...allDiscarded];
-      newState.discardPiles = [[], []];
+      newState.discardPile1 = [];
+      newState.discardPile2 = [];
     }
   }
 
@@ -230,7 +224,11 @@ export function drawFromDeck(gameState, discardPileIndex, keepCardIndex) {
   newState.players[newState.currentPlayerIndex].hand.push(keptCard);
 
   // Add discarded card to pile
-  newState.discardPiles[discardPileIndex].push(discardedCard);
+  if (discardPileIndex === 0) {
+    newState.discardPile1.push(discardedCard);
+  } else {
+    newState.discardPile2.push(discardedCard);
+  }
 
   return {
     updatedGameState: newState,
@@ -248,12 +246,14 @@ export function drawFromDeck(gameState, discardPileIndex, keepCardIndex) {
  */
 export function takeFromDiscardPile(gameState, pileIndex) {
   const newState = { ...gameState };
+  
+  const pile = pileIndex === 0 ? newState.discardPile1 : newState.discardPile2;
 
-  if (newState.discardPiles[pileIndex].length === 0) {
+  if (pile.length === 0) {
     return null;
   }
 
-  const takenCard = newState.discardPiles[pileIndex].pop();
+  const takenCard = pile.pop();
   newState.players[newState.currentPlayerIndex].hand.push(takenCard);
 
   return {
@@ -311,9 +311,13 @@ export function getGameStatus(gameState) {
       handSize: p.hand.length,
     })),
     deckSize: gameState.deck.length,
-    discardPiles: gameState.discardPiles.map(pile => ({
-      topCard: pile[pile.length - 1] || null,
-      size: pile.length,
-    })),
+    discardPile1: {
+      topCard: gameState.discardPile1[gameState.discardPile1.length - 1] || null,
+      size: gameState.discardPile1.length,
+    },
+    discardPile2: {
+      topCard: gameState.discardPile2[gameState.discardPile2.length - 1] || null,
+      size: gameState.discardPile2.length,
+    },
   };
 }
