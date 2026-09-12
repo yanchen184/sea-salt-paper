@@ -1,0 +1,208 @@
+/* Game Action Log Styles */
+.action-log {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 350px;
+  max-width: 90vw;
+  background: rgba(0, 0, 0, 0.9);
+  border: 2px solid #00ff88;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.action-log.collapsed {
+  height: 50px;
+}
+
+.action-log:not(.collapsed) {
+  max-height: 60vh;
+}
+
+.action-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border-bottom: 1px solid #333;
+  border-radius: 6px 6px 0 0;
+}
+
+.action-log-header h3 {
+  margin: 0;
+  color: #00ff88;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.action-log-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.log-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.log-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #00ff88;
+}
+
+.action-log-content {
+  overflow-y: auto;
+  max-height: calc(60vh - 50px);
+  padding: 10px;
+}
+
+.action-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #888;
+}
+
+.action-empty p {
+  margin: 8px 0;
+}
+
+.action-hint {
+  font-size: 13px;
+  font-style: italic;
+}
+
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid transparent;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.action-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.action-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.action-player {
+  font-weight: bold;
+  color: #00ff88;
+  font-size: 13px;
+}
+
+.action-message {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.action-time {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Action types */
+.action-system {
+  background: rgba(0, 255, 136, 0.1);
+  border-left-color: #00ff88;
+}
+
+.action-important {
+  background: rgba(255, 215, 0, 0.1);
+  border-left-color: #ffd700;
+}
+
+.action-important .action-player {
+  color: #ffd700;
+}
+
+.action-warning {
+  background: rgba(255, 107, 107, 0.1);
+  border-left-color: #ff6b6b;
+}
+
+.action-warning .action-player {
+  color: #ff6b6b;
+}
+
+.action-normal {
+  border-left-color: #555;
+}
+
+/* Scrollbar */
+.action-log-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.action-log-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.action-log-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.3);
+  border-radius: 3px;
+}
+
+.action-log-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .action-log {
+    top: 60px;
+    right: 10px;
+    width: calc(100vw - 20px);
+    max-width: 350px;
+  }
+
+  .action-log:not(.collapsed) {
+    max-height: 40vh;
+  }
+
+  .action-log-content {
+    max-height: calc(40vh - 50px);
+  }
+}

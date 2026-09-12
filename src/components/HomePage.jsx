@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './HomePage.css';
+import GameHistory from './GameHistory.jsx';
+import Leaderboard from './Leaderboard.jsx';
 
 // Home page - main entry point for the game
 export default function HomePage({ onNavigate }) {
@@ -7,12 +9,18 @@ export default function HomePage({ onNavigate }) {
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showGameHistory, setShowGameHistory] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [playerId, setPlayerId] = useState(null);
 
-  // Generate random player name on component mount
+  // Generate random player name and ID on component mount
   useEffect(() => {
     const randomName = generateRandomPlayerName();
+    const id = generatePlayerId();
     setPlayerName(randomName);
+    setPlayerId(id);
     console.log('[HomePage] Generated random player name:', randomName);
+    console.log('[HomePage] Generated player ID:', id);
   }, []);
 
   // Validate player name
@@ -200,7 +208,38 @@ export default function HomePage({ onNavigate }) {
             <li>💪 支持多設備實時對戰</li>
           </ul>
         </div>
+
+        {/* Action buttons */}
+        <div className="home-actions">
+          <button
+            className="action-btn history-btn"
+            onClick={() => setShowGameHistory(true)}
+          >
+            📜 遊戲記錄
+          </button>
+          <button
+            className="action-btn leaderboard-btn"
+            onClick={() => setShowLeaderboard(true)}
+          >
+            🏆 排行榜
+          </button>
+        </div>
       </div>
+
+      {/* Modals */}
+      {showGameHistory && (
+        <GameHistory
+          playerId={playerId}
+          onClose={() => setShowGameHistory(false)}
+        />
+      )}
+
+      {showLeaderboard && (
+        <Leaderboard
+          playerId={playerId}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
     </div>
   );
 }

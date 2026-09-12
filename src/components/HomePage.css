@@ -338,4 +338,57 @@
   .form-divider {
     margin: 20px 0;
   }
+
+  .home-actions {
+    gap: 10px;
+  }
+
+  .action-btn {
+    font-size: 14px;
+    padding: 10px 15px;
+  }
+}
+
+/* Action Buttons */
+.home-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+  justify-content: center;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.history-btn {
+  background: linear-gradient(135deg, #56ccf2 0%, #2f80ed 100%);
+  color: white;
+}
+
+.history-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(47, 128, 237, 0.3);
+}
+
+.leaderboard-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.leaderboard-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(245, 87, 108, 0.3);
+}
+
+.action-btn:active {
+  transform: translateY(0);
 }

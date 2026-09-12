@@ -38,16 +38,24 @@ export default function App() {
   // Start game from lobby
   const handleGameStart = async (roomCode, room) => {
     try {
-      // Initialize game deck
-      const deck = initializeGameDeck();
-      
-      // Import initializeRound to properly set up the game
-      const { initializeRound } = await import('./data/gameRules.js');
-      const gameState = initializeRound(room.players, deck);
+      // Only initialize game if this is the host (skipInit is not set)
+      // Non-host players will have skipInit: true and should just navigate
+      if (!room.skipInit) {
+        console.log('[App] Host is starting the game, initializing...');
+        // Initialize game deck
+        const deck = initializeGameDeck();
 
-      // Start game in Firebase with properly initialized state
-      await startGame(roomCode, gameState);
+        // Import initializeRound to properly set up the game
+        const { initializeRound } = await import('./data/gameRules.js');
+        const gameState = initializeRound(room.players, deck);
 
+        // Start game in Firebase with properly initialized state
+        await startGame(roomCode, gameState);
+      } else {
+        console.log('[App] Non-host player, skipping initialization, waiting for Firebase sync...');
+      }
+
+      // All players navigate to game board
       handleNavigate('game', {
         roomCode,
         players: room.players,

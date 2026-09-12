@@ -320,6 +320,46 @@ export function subscribeToGameState(roomCode, callback) {
   }
 }
 
+// Sync complete game state to Firebase
+// 同步完整的遊戲狀態到 Firebase
+export async function syncCompleteGameState(roomCode, gameState) {
+  console.log('[gameService] ========== syncCompleteGameState ==========');
+  console.log('  roomCode:', roomCode);
+  console.log('  gameState keys:', Object.keys(gameState));
+  
+  try {
+    console.log('[gameService] Syncing complete game state to Firebase...');
+
+    // Create a clean copy to sync (remove nested arrays for Firebase compatibility)
+    const cleanState = {
+      ...gameState,
+      lastSyncedAt: new Date().toISOString(),
+    };
+
+    // Clean up nested arrays in players (Firebase doesn't support nested arrays)
+    if (cleanState.players) {
+      cleanState.players = cleanState.players.map(player => ({
+        ...player,
+        // Convert playedPairs from array of arrays to serialized format
+        playedPairs: player.playedPairs ?
+          player.playedPairs.map((pair, idx) => ({
+            [`pair_${idx}_card1`]: pair[0],
+            [`pair_${idx}_card2`]: pair[1]
+          })) : []
+      }));
+    }
+
+    await updateGameState(roomCode, cleanState);
+    console.log('[gameService] ✓ Game state synced successfully');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[gameService] ✗ Error syncing game state:', error);
+    console.error('[gameService] Error message:', error.message);
+    throw error;
+  }
+}
+
 // Helper function to generate 6-character room code
 function generateRoomCode() {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

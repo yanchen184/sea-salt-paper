@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/GameOver.css';
+import { saveGameHistory } from '../services/gameHistoryService.js';
 
 export default function GameOver({
   roomCode,
@@ -7,16 +8,54 @@ export default function GameOver({
   scores,
   winnerName,
   winnerId,
+  winnerScore,
+  winCondition = 'score',
+  gameStartTime,
+  totalRounds = 1,
   onPlayAgain,
   onMainMenu,
 }) {
+  const [saved, setSaved] = useState(false);
+
   // Sort players by score
   const sortedPlayers = players
     ?.map((player, index) => ({
       ...player,
-      score: scores?.[index] || 0,
+      score: scores?.[index] || player.score || 0,
     }))
     ?.sort((a, b) => b.score - a.score) || [];
+
+  // Save game history on mount
+  useEffect(() => {
+    if (!saved && players && players.length > 0) {
+      const saveHistory = async () => {
+        try {
+          const gameDuration = gameStartTime
+            ? Math.floor((Date.now() - new Date(gameStartTime).getTime()) / 1000)
+            : 0;
+
+          await saveGameHistory({
+            roomCode,
+            players: sortedPlayers,
+            winnerId,
+            winnerName,
+            winnerScore: winnerScore || sortedPlayers[0]?.score || 0,
+            winCondition,
+            totalRounds,
+            gameDuration,
+            startedAt: gameStartTime || new Date().toISOString(),
+          });
+
+          setSaved(true);
+          console.log('[GameOver] Game history saved successfully');
+        } catch (error) {
+          console.error('[GameOver] Failed to save game history:', error);
+        }
+      };
+
+      saveHistory();
+    }
+  }, [players, saved, roomCode, winnerId, winnerName, winnerScore, winCondition, totalRounds, gameStartTime, sortedPlayers]);
 
   return (
     <div className="game-over">

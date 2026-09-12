@@ -1,4 +1,5 @@
 // Game logic utilities and helpers
+import { isValidPair } from '../data/cards.js';
 
 /**
  * Check if player has at least one valid pair in hand
@@ -17,29 +18,6 @@ export function findValidPairs(hand) {
   }
 
   return pairs;
-}
-
-/**
- * Check if two cards form a valid pair
- * @param {Object} card1 - First card
- * @param {Object} card2 - Second card
- * @returns {Boolean} Valid pair
- */
-export function isValidPair(card1, card2) {
-  if (!card1 || !card2) return false;
-
-  // Same card ID
-  if (card1.id === card2.id && card1.id !== 'human' && card1.id !== 'shark') {
-    return true;
-  }
-
-  // Special: shark + human
-  if ((card1.id === 'shark' && card2.id === 'human') ||
-      (card1.id === 'human' && card2.id === 'shark')) {
-    return true;
-  }
-
-  return false;
 }
 
 /**
