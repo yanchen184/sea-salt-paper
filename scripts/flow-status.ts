@@ -80,12 +80,12 @@ function flattenSpecs(suites: PlaywrightSuite[]): { title: string; ok: boolean }
   return suites.flatMap((s) => [...s.specs, ...flattenSpecs(s.suites ?? [])])
 }
 
-function runPlaywright(): SuiteRun {
-  const resultFile = join(TMP_DIR, 'playwright-results.json')
+function runPlaywright(label: string, resultName: string, config: string | null): SuiteRun {
+  const resultFile = join(TMP_DIR, resultName)
   const cli = join(ROOT, 'node_modules/@playwright/test/cli.js')
-  const report = run('playwright', [cli, 'test'], resultFile) as PlaywrightReport
+  const report = run(label, [cli, 'test', ...(config ? ['--config', config] : [])], resultFile) as PlaywrightReport
   const tests = flattenSpecs(report.suites).map((t) => ({ title: t.title, passed: t.ok }))
-  return { label: 'playwright', ok: report.stats.unexpected === 0, tests }
+  return { label, ok: report.stats.unexpected === 0, tests }
 }
 
 function collectResults(runs: SuiteRun[]): Map<string, ConditionResult> {
@@ -114,7 +114,8 @@ function nodeStatus(node: FlowNode, results: Map<string, ConditionResult>) {
 function main(): number {
   const nodes = parseFlow(readFileSync(FLOW_FILE, 'utf8'))
   const known = new Set(nodes.flatMap((n) => n.conditions))
-  const runs = [runVitest('unit', null), runVitest('emu', 'vitest.emu.config.ts'), runPlaywright()]
+  const runs = [runVitest('unit', null), runVitest('emu', 'vitest.emu.config.ts'), runPlaywright('playwright', 'playwright-results.json', null)]
+  if (process.env.LIVE_URL) runs.push(runPlaywright('live', 'playwright-live-results.json', 'playwright.live.config.ts'))
   const results = collectResults(runs)
 
   const unknown = [...results.keys()].filter((id) => !known.has(id))
