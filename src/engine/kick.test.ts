@@ -147,6 +147,25 @@ describe('G10 踢出玩家', () => {
     expect(next.players[next.current]?.id).toBe('b')
   })
 
+  it('[G10-1] 局結束後踢掉宣告者，下一局由宣告者座位上的下一位開始', () => {
+    const ended = act(setup({ players: 3, hands: [[], [], SEVEN_A], current: 2 }), 'c', { type: 'DECLARE', kind: 'stop' })
+    const t = kick(ended, 'c')
+    expect(t.roundResult?.declarerId).toBe('c')
+    const next = act(t, 'a', { type: 'NEXT_ROUND' })
+    expect(next.players[next.current]?.id).toBe('a')
+    expect(allCardIds(next)).toHaveLength(58)
+  })
+
+  it('[G10-1] 作廢局後踢掉起始玩家，下一局由他座位上的下一位開始', () => {
+    let s = setup({ players: 3, deck: ['shell-1', 'shell-2'], phase: 'draw', current: 0 })
+    s = act(act(s, 'a', { type: 'DRAW_DECK' }), 'a', { type: 'KEEP_DRAWN', keepCardId: 'shell-1', discardPile: 0 })
+    s = act(s, 'a', { type: 'END_TURN' })
+    expect(s.roundResult?.reason).toBe('void')
+    const t = kick(s, 'a')
+    const next = act(t, 'b', { type: 'NEXT_ROUND' })
+    expect(next.players[next.current]?.id).toBe('b')
+  })
+
   it('[G10-5] 只剩 1 人時遊戲結束，該玩家獲勝', () => {
     const t = kick(setup({ players: 2, scores: [5, 30] }), 'b')
     expect(t.status).toBe('gameOver')

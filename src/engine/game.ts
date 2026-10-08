@@ -160,7 +160,14 @@ function finishRound(s: GameState): void {
   if (!s.declaration) throw new Error('沒有宣告不能計分')
   const { declarerWon, scores } = scoreRound(s.players, s.declaration)
   s.players = s.players.map((p, i) => ({ ...p, score: p.score + (scores[i]?.gained ?? 0) }))
-  s.roundResult = { reason: s.declaration.kind, declarerId: s.declaration.playerId, declarerWon, scores }
+  const declarerIndex = s.players.findIndex((p) => p.id === s.declaration?.playerId)
+  s.roundResult = {
+    reason: s.declaration.kind,
+    declarerId: s.declaration.playerId,
+    declarerWon,
+    scores,
+    nextStarter: (declarerIndex + 1) % s.players.length,
+  }
   s.status = 'roundEnd'
   addLog(s, `第 ${s.round} 局結束：${scores.map((sc, i) => `${s.players[i]?.name} +${sc.gained}`).join('、')}`)
 
@@ -179,6 +186,7 @@ function voidRound(s: GameState): void {
     declarerId: null,
     declarerWon: null,
     scores: s.players.map((p) => ({ playerId: p.id, cardPoints: 0, colorBonus: 0, gained: 0 })),
+    nextStarter: (s.roundStarter + 1) % s.players.length,
   }
   s.status = 'roundEnd'
   addLog(s, `牌庫耗盡且無人宣告，第 ${s.round} 局作廢`)
@@ -383,10 +391,7 @@ function endTurn(s: GameState): ActionError | null {
 
 function nextRound(s: GameState): ActionError | null {
   if (s.status !== 'roundEnd' || !s.roundResult) return fail('NOT_ROUND_END')
-  const n = s.players.length
-  const declarerIndex = s.players.findIndex((p) => p.id === s.roundResult?.declarerId)
-  const starter = declarerIndex >= 0 ? (declarerIndex + 1) % n : (s.roundStarter + 1) % n
-  startRound(s, starter)
+  startRound(s, s.roundResult.nextStarter)
   return null
 }
 
@@ -514,7 +519,11 @@ export function removePlayer(state: GameState, playerId: string): ActionResult {
   s.current = seatAfterRemoval(s.current, index, count)
   s.roundStarter = seatAfterRemoval(s.roundStarter, index, count)
   if (s.roundResult) {
-    s.roundResult = { ...s.roundResult, scores: s.roundResult.scores.filter((sc) => sc.playerId !== kicked.id) }
+    s.roundResult = {
+      ...s.roundResult,
+      scores: s.roundResult.scores.filter((sc) => sc.playerId !== kicked.id),
+      nextStarter: seatAfterRemoval(s.roundResult.nextStarter, index, count),
+    }
   }
   addLog(s, `${kicked.name} 被房主移出遊戲`)
 

@@ -76,6 +76,8 @@ export interface RoundResult {
   /** 只有 LAST CHANCE 有值 */
   declarerWon: boolean | null
   scores: PlayerRoundScore[]
+  /** 下一局起始玩家的座位（規則 §2） */
+  nextStarter: number
 }
 
 export interface KickedPlayer {
