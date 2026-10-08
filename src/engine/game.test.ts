@@ -277,6 +277,7 @@ describe('G4a crab', () => {
     expect(rejectCode(t, 'a', { type: 'END_TURN' })).toBe('MUST_PICK_CRAB')
     expect(rejectCode(t, 'a', { type: 'PLAY_DUO', cardIds: ['boat-1', 'boat-2'] })).toBe('MUST_PICK_CRAB')
     expect(rejectCode(t, 'a', { type: 'DECLARE', kind: 'stop' })).toBe('MUST_PICK_CRAB')
+    expect(rejectCode(t, 'a', { type: 'NEXT_ROUND' })).toBe('MUST_PICK_CRAB')
     expect(rejectCode(t, 'b', { type: 'PICK_CRAB', cardId: 'shell-1' })).toBe('NOT_YOUR_TURN')
     expect(rejectCode(s, 'a', { type: 'PICK_CRAB', cardId: 'shell-1' })).toBe('WRONG_PHASE')
     const legal = getLegalActions(t, 'a')

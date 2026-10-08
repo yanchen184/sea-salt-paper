@@ -27,12 +27,14 @@ function roundTitle(game: GameState, result: RoundResult): string {
 interface ResultPanelProps {
   game: GameState
   uid: string
+  isHost: boolean
+  hostName: string
   busy: boolean
   onNextRound: () => void
 }
 
 /** 本局結束或整場結束時攤開所有人的牌 */
-export function ResultPanel({ game, uid, busy, onNextRound }: ResultPanelProps) {
+export function ResultPanel({ game, uid, isHost, hostName, busy, onNextRound }: ResultPanelProps) {
   const result = game.roundResult
   const legal = getLegalActions(game, uid)
   return (
@@ -72,11 +74,14 @@ export function ResultPanel({ game, uid, busy, onNextRound }: ResultPanelProps) 
           )
         })}
       </ul>
-      {game.status === 'roundEnd' && (
-        <ActionButton testId="next-round" hint={{ enabled: legal.nextRound, reason: null }} busy={busy} onClick={onNextRound}>
-          開始下一局
-        </ActionButton>
-      )}
+      {game.status === 'roundEnd' &&
+        (isHost ? (
+          <ActionButton testId="next-round" hint={{ enabled: legal.nextRound, reason: null }} busy={busy} onClick={onNextRound}>
+            開始下一局
+          </ActionButton>
+        ) : (
+          <p data-testid="waiting-next-round" className="text-sm text-amber-900">{`等待房主 ${hostName} 開始下一局`}</p>
+        ))}
     </section>
   )
 }

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { applyAction } from '../../src/engine'
 import { RoomError, type Room } from '../../src/firebase/types'
@@ -153,6 +153,24 @@ describe('動作同步', () => {
     expect(rejected[0]?.reason).toBeInstanceOf(RoomError)
     expect((rejected[0]?.reason as RoomError).code).toBe('STALE_VERSION')
     expect((await readRoom(a, code)).version).toBe(before.version + 1)
+  })
+})
+
+describe('局間', () => {
+  it('[S3-4] 只有房主能開始下一局', async () => {
+    const [host, b] = await Promise.all([newClient(), newClient()])
+    const code = await playing(host, b)
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const room = (await getDoc(doc(ctx.firestore(), 'rooms', code))).data() as Room
+      if (!room.game) throw new Error('沒有對局')
+      await updateDoc(doc(ctx.firestore(), 'rooms', code), {
+        game: { ...room.game, status: 'roundEnd', roundResult: { reason: 'void', declarerId: null, declarerWon: null, scores: [], nextStarter: 0 } },
+      })
+    })
+    const version = (await readRoom(host, code)).version
+    expect(await errorCode(b.rooms.sendAction(code, b.uid, { type: 'NEXT_ROUND' }, version))).toBe('NOT_HOST')
+    await host.rooms.sendAction(code, host.uid, { type: 'NEXT_ROUND' }, version)
+    expect((await readRoom(host, code)).game?.status).toBe('playing')
   })
 })
 

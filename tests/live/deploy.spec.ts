@@ -41,6 +41,7 @@ async function step(page: Page): Promise<boolean> {
     return true
   }
   if (await clickIfEnabled(page, 'action-draw')) return true
+  if ((await clickIfEnabled(page, 'action-take-0')) || (await clickIfEnabled(page, 'action-take-1'))) return true
   if (await clickIfEnabled(page, 'declare-stop')) return true
   if (await playPair(page)) return true
   return clickIfEnabled(page, 'end-turn')
@@ -63,7 +64,7 @@ test('[S4-2] 兩個不同瀏覽器在線上網址完成一整局', async ({ brow
   const deadline = Date.now() + 14 * 60_000
   while ((await host.getByTestId('game-over').count()) === 0) {
     expect(Date.now(), '對局在時限內沒有結束').toBeLessThan(deadline)
-    let acted = (await clickIfEnabled(host, 'next-round')) || (await clickIfEnabled(guest, 'next-round'))
+    let acted = await clickIfEnabled(host, 'next-round')
     for (const page of [host, guest]) {
       if (acted) break
       if (/^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await step(page)

@@ -44,6 +44,39 @@ service cloud.firestore {
     }
 
     match /rooms/{code} {
+      function presenceOf(uid) {
+        return /databases/$(database)/documents/rooms/$(code)/presence/$(uid);
+      }
+
+      function isStale(uid) {
+        return !exists(presenceOf(uid))
+          || get(presenceOf(uid)).data.lastSeen < request.time - duration.value(45, 's');
+      }
+
+      function isValidKick(before, after) {
+        let target = after.kickedUids[after.kickedUids.size() - 1];
+        return after.kickedUids == before.kickedUids.concat([target])
+          && target in before.playerUids
+          && target != request.auth.uid
+          && after.playerUids == before.playerUids.removeAll([target])
+          && isStale(target);
+      }
+
+      function isMemberUpdate() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let changed = after.diff(before).affectedKeys();
+        let byHost = request.auth.uid == before.hostId;
+        return isMember(before)
+          && !isKicked(before)
+          && changed.hasOnly(['status', 'game', 'players', 'playerUids', 'kickedUids', 'hostId', 'version', 'updatedAt'])
+          && after.version == before.version + 1
+          && (byHost || !changed.hasAny(['hostId', 'kickedUids']))
+          && (!changed.hasAny(['kickedUids']) || (byHost && isValidKick(before, after)))
+          && (!changed.hasAny(['playerUids']) || changed.hasAny(['kickedUids'])
+              || after.playerUids == before.playerUids.removeAll([request.auth.uid]));
+      }
+
       allow read: if signedIn() && (
         resource == null
         || resource.data.status in ['lobby', 'finished']
@@ -52,7 +85,7 @@ service cloud.firestore {
       );
       allow create: if signedIn() && isNewRoom(code);
       allow update: if signedIn() && (
-        (isMember(resource.data) && !isKicked(resource.data))
+        isMemberUpdate()
         || isSelfJoin()
         || (resource.data.status == 'finished' && isNewRoom(code))
       );
@@ -64,7 +97,14 @@ service cloud.firestore {
         }
 
         allow read: if signedIn() && isMember(room());
-        allow write: if signedIn() && request.auth.uid == uid && isMember(room()) && !isKicked(room());
+        function isSelf() {
+          return signedIn() && request.auth.uid == uid && isMember(room()) && !isKicked(room());
+        }
+
+        allow write: if isSelf()
+          && request.resource.data.keys().hasOnly(['lastSeen'])
+          && request.resource.data.lastSeen == request.time;
+        allow delete: if isSelf();
       }
     }
   }

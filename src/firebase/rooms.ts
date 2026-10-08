@@ -1,5 +1,6 @@
 import {
   doc,
+  getDoc,
   onSnapshot,
   runTransaction,
   serverTimestamp,
@@ -151,11 +152,24 @@ export function createRoomRepository(db: Firestore): RoomRepository {
   }
 
   async function sendAction(code: string, uid: string, action: Action, expectedVersion: number): Promise<void> {
+    try {
+      await commitAction(code, uid, action, expectedVersion)
+    } catch (error) {
+      if (!isPermissionDenied(error)) throw error
+      const current = (await getDoc(roomRef(code))).data()
+      if (current && current.version !== expectedVersion) throw RoomError.of('STALE_VERSION')
+      throw error
+    }
+  }
+
+  /** 規則要求 version 只能 +1：併發時晚到的寫入會被規則擋下（permission-denied），由 sendAction 轉成 STALE_VERSION */
+  async function commitAction(code: string, uid: string, action: Action, expectedVersion: number): Promise<void> {
     await runTransaction(db, async (tx) => {
       const room = await readRoom(tx, code)
       if (!room.playerUids.includes(uid)) throw RoomError.of('NOT_MEMBER')
       if (room.status !== 'playing' || !room.game) throw RoomError.of('NOT_PLAYING')
       if (room.version !== expectedVersion) throw RoomError.of('STALE_VERSION')
+      if (action.type === 'NEXT_ROUND') requireHost(room, uid)
       const result = applyAction(room.game, uid, action)
       if (!result.ok) throw RoomError.fromEngine(result.error)
       tx.update(roomRef(code), {

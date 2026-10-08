@@ -62,7 +62,7 @@ export function GameView({ room, game, uid, isOffline, run, onLeave }: GameViewP
           onLeave={onLeave}
         />
       )}
-      {game.status !== 'playing' && <ResultPanel game={game} uid={uid} busy={busy} onNextRound={() => send({ type: 'NEXT_ROUND' })} />}
+      {game.status !== 'playing' && <ResultPanel game={game} uid={uid} isHost={room.hostId === uid} hostName={hostName} busy={busy} onNextRound={() => send({ type: 'NEXT_ROUND' })} />}
 
       <PlayersPanel room={room} game={game} uid={uid} isOffline={isOffline} busy={busy} onKick={(target) => perform(() => rooms.kickPlayer(room.code, uid, target))} />
       {game.status === 'playing' && (

@@ -7,9 +7,17 @@ import { isRoomCode, normalizeRoomCode } from '../lib/roomCode'
 
 export type Route = { name: 'home' } | { name: 'room'; code: string }
 
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return ''
+  }
+}
+
 function parseHash(hash: string): Route {
   const match = hash.match(/^#\/room\/([^/]+)$/)
-  const code = match?.[1] ? normalizeRoomCode(decodeURIComponent(match[1])) : ''
+  const code = match?.[1] ? normalizeRoomCode(decodeSegment(match[1])) : ''
   return isRoomCode(code) ? { name: 'room', code } : { name: 'home' }
 }
 

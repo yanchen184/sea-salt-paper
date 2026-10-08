@@ -398,10 +398,12 @@ function nextRound(s: GameState): ActionError | null {
 function handle(s: GameState, playerId: string, action: Action): ActionError | null {
   const index = s.players.findIndex((p) => p.id === playerId)
   if (index < 0) return fail('UNKNOWN_PLAYER')
+  if (s.status === 'playing' && s.phase === 'crabPick' && action.type !== 'PICK_CRAB') {
+    return fail(index === s.current ? 'MUST_PICK_CRAB' : 'NOT_YOUR_TURN')
+  }
   if (action.type === 'NEXT_ROUND') return nextRound(s)
   if (s.status !== 'playing') return fail('GAME_NOT_PLAYING')
   if (index !== s.current) return fail('NOT_YOUR_TURN')
-  if (s.phase === 'crabPick' && action.type !== 'PICK_CRAB') return fail('MUST_PICK_CRAB')
 
   switch (action.type) {
     case 'DRAW_DECK':

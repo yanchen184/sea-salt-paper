@@ -71,6 +71,8 @@ getLegalActions(state: GameState, playerId: string): LegalActions
 
 手牌與牌庫順序都在房間文件裡，任何房間成員用開發者工具都讀得到。畫面上只顯示該看的資訊。要真正隱藏需要伺服器端執行動作（Cloud Functions），這個專案先不做。
 
+同理，安全規則只限制房間層級的欄位（version、房主、踢人、玩家名單），`game` 的內容由客戶端的引擎產生，房間成員可以繞過畫面直接改寫。
+
 ## 安全規則
 
 - 必須登入（匿名也算）。

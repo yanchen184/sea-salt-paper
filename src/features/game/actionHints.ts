@@ -54,7 +54,7 @@ export function drawDeckHint(state: GameState, legal: LegalActions): Hint {
   if (legal.drawDeck) return OK
   const wait = waitReason(state, legal)
   if (wait) return no(wait)
-  if (state.phase !== 'draw') return no(PHASE_REASONS.actions)
+  if (state.phase !== 'draw') return no(PHASE_REASONS[state.phase])
   return no('牌庫沒有牌了')
 }
 
@@ -62,7 +62,7 @@ export function takeDiscardHint(state: GameState, legal: LegalActions, pile: Pil
   if (legal.takeDiscard.includes(pile)) return OK
   const wait = waitReason(state, legal)
   if (wait) return no(wait)
-  if (state.phase !== 'draw') return no(PHASE_REASONS.actions)
+  if (state.phase !== 'draw') return no(PHASE_REASONS[state.phase])
   return no('這個棄牌堆是空的')
 }
 

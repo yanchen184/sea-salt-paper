@@ -31,6 +31,22 @@ describe('動作停用原因', () => {
     expect(endTurnHint(state, legal).reason).toBe('要先抽牌庫或拿一張棄牌堆頂牌')
   })
 
+  it('[S3-3] 選留牌與螃蟹挑牌時，取牌按鈕說明要先完成哪一步', () => {
+    const chosen = act(setup({ phase: 'draw' }), 'a', { type: 'DRAW_DECK' })
+    const c = hintsFor(chosen, 'a')
+    expect(drawDeckHint(c.state, c.legal).reason).toBe('要先決定留下哪一張')
+    expect(takeDiscardHint(c.state, c.legal, 0).reason).toBe('要先決定留下哪一張')
+
+    const crab = act(setup({ hands: [['crab-1', 'crab-2']], discards: [['shell-1'], []] }), 'a', {
+      type: 'PLAY_DUO',
+      cardIds: ['crab-1', 'crab-2'],
+      crab: { pile: 0 },
+    })
+    const k = hintsFor(crab, 'a')
+    expect(drawDeckHint(k.state, k.legal).reason).toBe('要先從棄牌堆挑一張')
+    expect(takeDiscardHint(k.state, k.legal, 1).reason).toBe('要先從棄牌堆挑一張')
+  })
+
   it('[S3-3] 牌庫空時不能抽牌庫', () => {
     const { state, legal } = hintsFor(setup({ phase: 'draw', deck: [], discards: [['shell-1'], []] }), 'a')
     expect(drawDeckHint(state, legal)).toEqual({ enabled: false, reason: '牌庫沒有牌了' })

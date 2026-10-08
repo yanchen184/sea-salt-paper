@@ -107,7 +107,9 @@ test('[S3-4] 本局計分時所有人攤牌', async ({ browser }) => {
   await expect(hostReveal.getByTestId('reveal-gained')).toHaveText('8')
   await expect(host.getByTestId('reveal').filter({ hasText: '客人' }).locator('[data-card-id="crab-1"]')).toHaveCount(1)
 
-  await guest.getByTestId('next-round').click()
+  await expect(guest.getByTestId('next-round')).toHaveCount(0)
+  await expect(guest.getByTestId('waiting-next-round')).toHaveText('等待房主 房主 開始下一局')
+  await host.getByTestId('next-round').click()
   for (const page of [host, guest]) {
     await expect(page.getByTestId('round-result')).toHaveCount(0)
     await expect(page.getByText('第 2 局', { exact: false }).first()).toBeVisible()

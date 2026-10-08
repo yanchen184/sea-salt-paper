@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { deleteDoc, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import type { Room } from '../../src/firebase/types'
 import { rulesEnv } from './client'
 
@@ -44,7 +44,7 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'rooms', 'ABCD'), lobbyRoom)
     await setDoc(doc(ctx.firestore(), 'rooms', 'PLAY'), playingRoom)
-    await setDoc(doc(ctx.firestore(), 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: 1 })
+    await setDoc(doc(ctx.firestore(), 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: Timestamp.fromMillis(0) })
   })
 })
 
@@ -76,12 +76,53 @@ describe('非成員', () => {
     await assertFails(setDoc(doc(mallory(), 'rooms', 'NEWR'), { ...lobbyRoom, code: 'NEWR' }))
     const bob = env.authenticatedContext('bob').firestore()
     await assertFails(setDoc(doc(bob, 'rooms', 'PLAY', 'presence', 'alice'), { lastSeen: 1 }))
-    await assertSucceeds(setDoc(doc(bob, 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: 2 }))
+    await assertSucceeds(setDoc(doc(bob, 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: serverTimestamp() }))
   })
 
   it('[S2-1] 被踢出的玩家不能再寫入房間，也不能重新加入', async () => {
     await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'rooms', 'ABCD'), { ...lobbyRoom, kickedUids: ['mallory'] }))
     await assertFails(updateDoc(doc(mallory(), 'rooms', 'ABCD'), joinOf(lobbyRoom, 'mallory')))
+  })
+})
+
+describe('成員', () => {
+  const alice = () => env.authenticatedContext('alice').firestore()
+  const bob = () => env.authenticatedContext('bob').firestore()
+  const room = (db: ReturnType<typeof alice>) => doc(db, 'rooms', 'PLAY')
+  const next = { version: playingRoom.version + 1, updatedAt: serverTimestamp() }
+  const kickBob = { ...next, players: [playingRoom.players[0]], playerUids: ['alice'], kickedUids: ['bob'] }
+
+  it('[S2-3] version 只能 +1', async () => {
+    await assertFails(updateDoc(room(bob()), { version: playingRoom.version }))
+    await assertFails(updateDoc(room(bob()), { version: playingRoom.version + 5 }))
+    await assertFails(updateDoc(room(bob()), { ...next, code: 'XXXX' }))
+    await assertSucceeds(updateDoc(room(bob()), { ...next, game: null }))
+  })
+
+  it('[S2-3] 非房主不能改房主、踢人或移除別人', async () => {
+    await assertFails(updateDoc(room(bob()), { ...next, hostId: 'bob' }))
+    await assertFails(updateDoc(room(bob()), { ...next, kickedUids: ['alice'], playerUids: ['bob'], players: [playingRoom.players[1]] }))
+    await assertFails(updateDoc(room(bob()), { ...next, playerUids: ['bob'], players: [playingRoom.players[1]] }))
+    await assertSucceeds(updateDoc(room(bob()), { ...next, playerUids: ['alice'], players: [playingRoom.players[0]] }))
+  })
+
+  it('[S2-3] 房主踢人時，目標的 presence 須已超過 45 秒（伺服器時間）', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: Timestamp.fromMillis(Date.now() - 10_000) }),
+    )
+    await assertFails(updateDoc(room(alice()), kickBob))
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'rooms', 'PLAY', 'presence', 'bob'), { lastSeen: Timestamp.fromMillis(Date.now() - 60_000) }),
+    )
+    await assertFails(updateDoc(room(alice()), { ...kickBob, kickedUids: ['alice'] }))
+    await assertSucceeds(updateDoc(room(alice()), kickBob))
+  })
+
+  it('[S2-3] presence 只能寫入伺服器時間', async () => {
+    const mine = doc(bob(), 'rooms', 'PLAY', 'presence', 'bob')
+    await assertFails(setDoc(mine, { lastSeen: Timestamp.fromMillis(Date.now() + 3_600_000) }))
+    await assertFails(setDoc(mine, { lastSeen: serverTimestamp(), extra: 1 }))
+    await assertSucceeds(setDoc(mine, { lastSeen: serverTimestamp() }))
   })
 })
 
