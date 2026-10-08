@@ -1,3 +1,73 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root,
+  :root[data-theme='paper'] {
+    --surface: 251 247 238;
+    --ink: 59 74 84;
+    --ink-muted: 78 90 98;
+    --heading: 31 58 77;
+    --line: 217 205 179;
+    --accent: 47 111 143;
+    --on-accent: 255 255 255;
+    --notice: 247 236 208;
+    --notice-ink: 110 72 16;
+    --font-display: ui-serif, 'Noto Serif TC', 'Songti TC', serif;
+    --page: #efe6d2;
+    --table-image: url('./assets/art/paper/table.svg');
+    --card-back-image: url('./assets/art/paper/card-back.svg');
+    --card-frame: inset 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 2px rgb(60 40 10 / 0.25);
+  }
+
+  :root[data-theme='night'] {
+    --surface: 17 40 73;
+    --ink: 219 228 240;
+    --ink-muted: 168 186 210;
+    --heading: 241 217 138;
+    --line: 44 70 112;
+    --accent: 212 175 55;
+    --on-accent: 11 29 58;
+    --notice: 40 52 70;
+    --notice-ink: 241 217 138;
+    --font-display: ui-serif, 'Noto Serif TC', 'Songti TC', serif;
+    --page: #0b1d3a;
+    --table-image: url('./assets/art/night/table.svg');
+    --card-back-image: url('./assets/art/night/card-back.svg');
+    --card-frame: inset 0 0 0 2px #d4af37, 0 2px 6px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+
+  body {
+    @apply text-ink;
+    background-color: var(--page);
+    background-image: var(--table-image);
+    background-size: 400px 400px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .card-face {
+    box-shadow: var(--card-frame);
+  }
+
+  .card-back {
+    background-image: var(--card-back-image);
+    background-size: 100% 100%;
+    box-shadow: var(--card-frame);
+  }
+
+  .creature {
+    display: block;
+    background-color: currentColor;
+    mask: var(--creature) center / contain no-repeat;
+    -webkit-mask: var(--creature) center / contain no-repeat;
+  }
+}

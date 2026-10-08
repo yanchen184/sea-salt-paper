@@ -1,5 +1,6 @@
+import type { CSSProperties } from 'react'
 import { CARD_NAMES, COLOR_NAMES, describeCard, type Card } from '../../engine'
-import { CARD_ICONS, COLOR_CLASSES } from './cardStyle'
+import { COLOR_CLASSES, CREATURE_URLS } from './cardStyle'
 
 interface CardViewProps {
   card: Card
@@ -15,16 +16,25 @@ const SIZES = {
   sm: 'h-14 w-10 text-[10px]',
 }
 
+const ART_SIZES = {
+  md: 'h-9 w-9',
+  sm: 'h-6 w-6',
+}
+
 export function CardView({ card, size = 'md', selected = false, onClick, disabled = false, testId }: CardViewProps) {
-  const className = `flex shrink-0 flex-col items-center justify-between rounded-lg p-1 font-semibold shadow-sm ${SIZES[size]} ${COLOR_CLASSES[card.color]} ${
+  const className = `card-face flex shrink-0 flex-col items-center justify-between rounded-lg p-1 font-semibold ${SIZES[size]} ${COLOR_CLASSES[card.color]} ${
     selected ? '-translate-y-2 ring-4 ring-amber-400' : ''
   }`
   const content = (
     <>
       <span>{COLOR_NAMES[card.color]}</span>
-      <span aria-hidden className={size === 'md' ? 'text-2xl' : 'text-base'}>
-        {CARD_ICONS[card.kind]}
-      </span>
+      <span
+        aria-hidden
+        data-testid="card-art"
+        data-kind={card.kind}
+        className={`creature ${ART_SIZES[size]}`}
+        style={{ '--creature': `url("${CREATURE_URLS[card.kind]}")` } as CSSProperties}
+      />
       <span>{CARD_NAMES[card.kind]}</span>
     </>
   )
@@ -52,14 +62,14 @@ export function CardView({ card, size = 'md', selected = false, onClick, disable
 
 export function CardBack({ size = 'md', label }: { size?: 'md' | 'sm'; label?: string }) {
   return (
-    <div className={`flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-700 font-bold text-white shadow-sm ${SIZES[size]}`}>
-      {label}
+    <div data-testid="card-back" className={`card-back flex shrink-0 items-center justify-center rounded-lg font-bold text-white ${SIZES[size]}`}>
+      {label && <span className="rounded bg-black/45 px-1.5 py-0.5">{label}</span>}
     </div>
   )
 }
 
 export function EmptySlot({ size = 'md', label }: { size?: 'md' | 'sm'; label: string }) {
   return (
-    <div className={`flex shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-sky-300 text-sky-400 ${SIZES[size]}`}>{label}</div>
+    <div className={`flex shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-line text-ink-muted ${SIZES[size]}`}>{label}</div>
   )
 }

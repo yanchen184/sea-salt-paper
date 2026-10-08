@@ -1,6 +1,6 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { markOffline, placeGame, readRoom } from '../e2e/admin'
-import { createRoom, joinRoom, openHome } from '../e2e/helpers'
+import { expect, test, createRoom, joinRoom, openHome } from '../e2e/helpers'
 
 const OUT = 'docs/manual/img'
 
@@ -189,4 +189,23 @@ test('07 手機畫面', async ({ browser }) => {
   await host.setViewportSize({ width: 390, height: 844 })
   await expect(host.getByTestId('my-hand')).toBeVisible()
   await shot(host, '26-mobile')
+})
+
+test('08 深海夜航主題', async ({ browser }) => {
+  const { code, host, guests } = await table(browser, ['阿鹽', '紙鶴'])
+  await start(host, guests)
+  await placeGame(code, {
+    phase: 'draw',
+    current: 0,
+    hands: [['fish-1', 'shell-1', 'octopus-1'], ['crab-3', 'boat-2'], ['penguin-1']],
+    fields: [[], ['boat-3', 'boat-4'], []],
+    discards: [['crab-1'], ['shark-2']],
+    deck: ['mermaid-1', 'fish-2', 'crab-2', 'boat-1', 'shell-2', 'shell-3', 'swimmer-1', 'shark-1'],
+  })
+  await host.getByTestId('theme-night').click()
+  await expect(host.locator('html')).toHaveAttribute('data-theme', 'night')
+  await shot(host, '27-night-game')
+  await host.goto('./')
+  await expect(host.getByTestId('nickname')).toBeVisible()
+  await shot(host, '28-night-home')
 })

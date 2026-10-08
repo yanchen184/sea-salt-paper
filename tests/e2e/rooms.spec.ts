@@ -1,6 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { placeGame } from './admin'
-import { createRoom, joinRoom, openHome, playerNames } from './helpers'
+import { expect, test, createRoom, joinRoom, openHome, playerNames } from './helpers'
 
 test('[A1-1] 首次進站自動匿名登入，暱稱 1–12 字才能建立或加入', async ({ browser }) => {
   const page = await openHome(browser)

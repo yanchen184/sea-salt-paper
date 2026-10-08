@@ -54,11 +54,11 @@ function SeatRow({ player, seat, isHost, isMe, isCurrent, isDeclarer, offline, k
     <li
       data-testid="player"
       data-current={isCurrent}
-      className={`space-y-2 rounded-xl bg-white p-3 shadow-sm ${isCurrent ? 'ring-2 ring-amber-400' : 'ring-1 ring-slate-200'}`}
+      className={`space-y-2 rounded-xl bg-surface p-3 shadow-sm ${isCurrent ? 'ring-2 ring-amber-400' : 'ring-1 ring-line'}`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-800">{seat + 1}</span>
-        <span data-testid="player-name" className="font-medium text-slate-800">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-heading">{seat + 1}</span>
+        <span data-testid="player-name" className="font-medium text-ink">
           {player.name}
         </span>
         {isHost && <Badge className="bg-amber-100 text-amber-800">房主</Badge>}
@@ -74,11 +74,11 @@ function SeatRow({ player, seat, isHost, isMe, isCurrent, isDeclarer, offline, k
             離線
           </Badge>
         )}
-        <span className="ml-auto text-sm text-slate-600">
-          總分 <span data-testid="player-score" className="font-bold text-slate-900">{player.score}</span>
+        <span className="ml-auto text-sm text-ink-muted">
+          總分 <span data-testid="player-score" className="font-bold text-heading">{player.score}</span>
         </span>
       </div>
-      <div className="flex items-center gap-2 text-xs text-slate-600">
+      <div className="flex items-center gap-2 text-xs text-ink-muted">
         <CardBack size="sm" label={String(player.hand.length)} />
         <span>
           手牌 <span data-testid="player-hand-count">{player.hand.length}</span> 張
@@ -86,7 +86,7 @@ function SeatRow({ player, seat, isHost, isMe, isCurrent, isDeclarer, offline, k
       </div>
       <div data-testid="player-field" className="flex min-h-[3.5rem] flex-wrap gap-1">
         {player.field.length === 0 ? (
-          <span className="self-center text-xs text-slate-400">場上沒有牌</span>
+          <span className="self-center text-xs text-ink-muted">場上沒有牌</span>
         ) : (
           player.field.map((c) => <CardView key={c.id} card={c} size="sm" />)
         )}

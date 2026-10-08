@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <pattern id="fiber" width="28" height="24" patternUnits="userSpaceOnUse">
+      <path d="M2 5h9m7 11h8M7 22h4M21 3h3" stroke="#b99e76" stroke-width=".7" stroke-linecap="round" opacity=".16"/>
+      <path d="m4 13 5-1m14-5 3-1" stroke="#fffaf0" stroke-width=".8" stroke-linecap="round" opacity=".35"/>
+    </pattern>
+  </defs>
+  <path fill="#e8d8b9" d="M0 0h400v400H0z"/>
+  <path fill="url(#fiber)" d="M0 0h400v400H0z"/>
+  <g fill="none" stroke="#b99e76" stroke-width="1.2" opacity=".16">
+    <path d="M-20 92 120 78l118 18 182-22M-16 310l126-18 132 20 178-16"/>
+    <path d="M88-20 76 120l18 118-20 182M310-16l-18 126 20 132-16 178"/>
+  </g>
+  <g stroke-linejoin="round">
+    <g transform="translate(42 28)" stroke="#9dbfca" stroke-width="2" fill="#c9dfe1" opacity=".48">
+      <path d="M-38 24Q-28 8-18 24T2 24t20 0 20 0" fill="none"/>
+      <path d="m2-22 15 15L2 5-13-7z"/><path d="M2-22V5M-13-7h30" fill="none"/>
+    </g>
+    <g transform="translate(358 372) rotate(180)" stroke="#9dbfca" stroke-width="2" fill="#c9dfe1" opacity=".48">
+      <path d="M-38 24Q-28 8-18 24T2 24t20 0 20 0" fill="none"/>
+      <path d="m2-22 15 15L2 5-13-7z"/><path d="M2-22V5M-13-7h30" fill="none"/>
+    </g>
+    <g transform="translate(370 24)" fill="#f4ead5" stroke="#b99e76" stroke-width="1.5" opacity=".55">
+      <path d="M0-18C-14-15-22-4-20 10l7-4 6 7 7-6 7 6 6-7 7 4C22-4 14-15 0-18z"/>
+      <path d="M0-18V7M0-18-13 6M0-18 13 6" fill="none"/>
+    </g>
+    <g transform="translate(30 376) rotate(180)" fill="#f4ead5" stroke="#b99e76" stroke-width="1.5" opacity=".55">
+      <path d="M0-18C-14-15-22-4-20 10l7-4 6 7 7-6 7 6 6-7 7 4C22-4 14-15 0-18z"/>
+      <path d="M0-18V7M0-18-13 6M0-18 13 6" fill="none"/>
+    </g>
+  </g>
+</svg>

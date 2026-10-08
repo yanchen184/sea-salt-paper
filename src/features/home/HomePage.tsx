@@ -61,12 +61,12 @@ export function HomePage({ uid, initialCode = '', onEnter }: HomePageProps) {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-10">
       <header className="text-center">
-        <h1 className="text-4xl font-bold text-sky-900">海鹽與紙</h1>
-        <p className="mt-2 text-sm text-sky-700">Sea Salt &amp; Paper · 線上 2–4 人</p>
+        <h1 className="text-4xl font-bold text-heading">海鹽與紙</h1>
+        <p className="mt-2 text-sm text-ink-muted">Sea Salt &amp; Paper · 線上 2–4 人</p>
       </header>
 
-      <section className="space-y-2 rounded-2xl bg-white p-5 shadow-sm">
-        <label htmlFor="nickname" className="block text-sm font-medium text-slate-700">
+      <section className="space-y-2 rounded-2xl bg-surface p-5 shadow-sm">
+        <label htmlFor="nickname" className="block text-sm font-medium text-ink">
           暱稱（1–{NICKNAME_MAX} 字）
         </label>
         <input
@@ -76,24 +76,24 @@ export function HomePage({ uid, initialCode = '', onEnter }: HomePageProps) {
           onChange={(e) => changeNickname(e.target.value)}
           maxLength={NICKNAME_MAX * 2}
           autoComplete="nickname"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="輸入你的暱稱"
         />
         {!nameOk && nickname.length > 0 && <p className="text-xs text-rose-600">暱稱需為 1–{NICKNAME_MAX} 字</p>}
       </section>
 
-      <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+      <section className="space-y-4 rounded-2xl bg-surface p-5 shadow-sm">
         <button
           type="button"
           data-testid="create-room"
           onClick={create}
           disabled={!nameOk || busy}
-          className="w-full rounded-lg bg-sky-600 px-4 py-3 font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="w-full rounded-lg bg-accent px-4 py-3 font-semibold text-on-accent transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted"
         >
           建立房間
         </button>
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />或<span className="h-px flex-1 bg-slate-200" />
+        <div className="flex items-center gap-3 text-xs text-ink-muted">
+          <span className="h-px flex-1 bg-line" />或<span className="h-px flex-1 bg-line" />
         </div>
         <form onSubmit={join} className="flex gap-2">
           <input
@@ -103,13 +103,13 @@ export function HomePage({ uid, initialCode = '', onEnter }: HomePageProps) {
             maxLength={ROOM_CODE_LENGTH}
             aria-label="房號"
             placeholder="房號"
-            className="w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center font-mono text-lg uppercase tracking-widest focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            className="w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-center font-mono text-lg uppercase tracking-widest focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
           <button
             type="submit"
             data-testid="join-room"
             disabled={!nameOk || busy || code.trim().length === 0}
-            className="rounded-lg bg-emerald-600 px-5 py-2 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="rounded-lg bg-emerald-600 px-5 py-2 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted"
           >
             加入
           </button>

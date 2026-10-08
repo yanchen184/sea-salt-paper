@@ -37,12 +37,12 @@ export function GameView({ room, game, uid, isOffline, run, onLeave }: GameViewP
 
   return (
     <section data-testid="game-view" className="space-y-4">
-      <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-2xl bg-white p-4 shadow-sm">
-        <h2 data-testid="game-status" className="text-xl font-bold text-sky-900">
+      <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-2xl bg-surface p-4 shadow-sm">
+        <h2 data-testid="game-status" className="text-xl font-bold text-heading">
           {room.status === 'finished' ? '遊戲已結束' : '遊戲進行中'}
         </h2>
-        <span className="text-sm text-slate-600">{`房號 ${room.code} · 第 ${game.round} 局 · 目標 ${game.targetScore} 分`}</span>
-        <p data-testid="turn-text" className="w-full font-medium text-sky-800">
+        <span className="text-sm text-ink-muted">{`房號 ${room.code} · 第 ${game.round} 局 · 目標 ${game.targetScore} 分`}</span>
+        <p data-testid="turn-text" className="w-full font-medium text-heading">
           {turnText(game, uid)}
         </p>
         {declarer && game.status === 'playing' && game.declaration?.kind === 'lastChance' && (
@@ -79,9 +79,9 @@ export function GameView({ room, game, uid, isOffline, run, onLeave }: GameViewP
 function GameLog({ game }: { game: GameState }) {
   const entries = game.log.map((e, index) => ({ ...e, index })).filter((e) => e.round === game.round).slice(-LOG_LIMIT)
   return (
-    <section aria-label="本局紀錄" className="rounded-2xl bg-white p-4 shadow-sm">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">本局紀錄</h3>
-      <ol data-testid="game-log" className="space-y-1 text-sm text-slate-600">
+    <section aria-label="本局紀錄" className="rounded-2xl bg-surface p-4 shadow-sm">
+      <h3 className="mb-2 text-sm font-semibold text-ink">本局紀錄</h3>
+      <ol data-testid="game-log" className="space-y-1 text-sm text-ink-muted">
         {entries.map((e) => (
           <li key={e.index}>{e.text}</li>
         ))}

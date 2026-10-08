@@ -1,4 +1,17 @@
-import { expect, type Browser, type Page } from '@playwright/test'
+import { expect, test as base, type Browser, type Page } from '@playwright/test'
+
+export { expect }
+
+/** 每個測試結束時關掉這個測試開的所有瀏覽器 context */
+export const test = base.extend<{ closeContexts: void }>({
+  closeContexts: [
+    async ({ browser }, use) => {
+      await use()
+      await Promise.all(browser.contexts().map((context) => context.close()))
+    },
+    { auto: true },
+  ],
+})
 
 export async function openHome(browser: Browser): Promise<Page> {
   const context = await browser.newContext()

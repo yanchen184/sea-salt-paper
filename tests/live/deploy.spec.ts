@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
-import { expect, test, type Page } from '@playwright/test'
-import { createRoom, joinRoom, openHome } from '../e2e/helpers'
+import type { Page } from '@playwright/test'
+import { expect, test, createRoom, joinRoom, openHome } from '../e2e/helpers'
 
 const PAIR_KINDS = ['crab', 'boat', 'fish']
 

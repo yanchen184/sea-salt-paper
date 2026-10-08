@@ -38,10 +38,10 @@ export function ResultPanel({ game, uid, isHost, hostName, busy, onNextRound }: 
   const result = game.roundResult
   const legal = getLegalActions(game, uid)
   return (
-    <section data-testid="round-result" className="space-y-3 rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
-      <h3 className="text-lg font-bold text-amber-900">{`第 ${game.round} 局 · 攤牌`}</h3>
+    <section data-testid="round-result" className="space-y-3 rounded-2xl bg-notice p-4 shadow-sm ring-1 ring-line">
+      <h3 className="text-lg font-bold text-notice-ink">{`第 ${game.round} 局 · 攤牌`}</h3>
       {result && (
-        <p data-testid="round-reason" className="text-sm text-amber-900">
+        <p data-testid="round-reason" className="text-sm text-notice-ink">
           {roundTitle(game, result)}
         </p>
       )}
@@ -49,21 +49,21 @@ export function ResultPanel({ game, uid, isHost, hostName, busy, onNextRound }: 
         {game.players.map((p) => {
           const score = result?.scores.find((s) => s.playerId === p.id)
           return (
-            <li key={p.id} data-testid="reveal" className="space-y-1 rounded-xl bg-white p-3">
+            <li key={p.id} data-testid="reveal" className="space-y-1 rounded-xl bg-surface p-3">
               <div className="flex flex-wrap items-baseline gap-x-3 text-sm">
-                <span data-testid="reveal-name" className="font-semibold text-slate-800">
+                <span data-testid="reveal-name" className="font-semibold text-ink">
                   {p.name}
                 </span>
                 {score && (
                   <>
-                    <span className="text-slate-600">卡牌分 {score.cardPoints}</span>
-                    <span className="text-slate-600">顏色加分 {score.colorBonus}</span>
-                    <span className="font-bold text-sky-800">
+                    <span className="text-ink-muted">卡牌分 {score.cardPoints}</span>
+                    <span className="text-ink-muted">顏色加分 {score.colorBonus}</span>
+                    <span className="font-bold text-heading">
                       本局 +<span data-testid="reveal-gained">{score.gained}</span>
                     </span>
                   </>
                 )}
-                <span className="ml-auto text-slate-600">總分 {p.score}</span>
+                <span className="ml-auto text-ink-muted">總分 {p.score}</span>
               </div>
               <div className="flex flex-wrap gap-1" data-testid="reveal-hand">
                 {[...p.hand, ...p.field].map((c) => (
@@ -80,7 +80,7 @@ export function ResultPanel({ game, uid, isHost, hostName, busy, onNextRound }: 
             開始下一局
           </ActionButton>
         ) : (
-          <p data-testid="waiting-next-round" className="text-sm text-amber-900">{`等待房主 ${hostName} 開始下一局`}</p>
+          <p data-testid="waiting-next-round" className="text-sm text-notice-ink">{`等待房主 ${hostName} 開始下一局`}</p>
         ))}
     </section>
   )
@@ -99,23 +99,23 @@ export function GameOverPanel({ game, isHost, hostName, busy, onRestart, onLeave
   const winner = game.players.find((p) => p.id === game.winnerId)
   const ranking = [...game.players].sort((a, b) => b.score - a.score)
   return (
-    <section data-testid="game-over" className="space-y-3 rounded-2xl bg-white p-5 text-center shadow-sm ring-2 ring-amber-300">
+    <section data-testid="game-over" className="space-y-3 rounded-2xl bg-surface p-5 text-center shadow-sm ring-2 ring-amber-300">
       <p className="text-3xl" aria-hidden>
         🏆
       </p>
-      <h3 data-testid="winner" className="text-xl font-bold text-sky-900">
+      <h3 data-testid="winner" className="text-xl font-bold text-heading">
         {winner ? `${winner.name} 獲勝` : '遊戲結束'}
       </h3>
-      {game.winReason && <p className="text-sm text-slate-600">{WIN_REASONS[game.winReason]}</p>}
+      {game.winReason && <p className="text-sm text-ink-muted">{WIN_REASONS[game.winReason]}</p>}
       <ol className="mx-auto max-w-xs space-y-1 text-left">
         {ranking.map((p, i) => (
-          <li key={p.id} data-testid="final-score" className="flex justify-between rounded-lg bg-sky-50 px-3 py-1 text-sm">
+          <li key={p.id} data-testid="final-score" className="flex justify-between rounded-lg bg-accent/10 px-3 py-1 text-sm">
             <span>{`${i + 1}. ${p.name}`}</span>
             <span className="font-bold">{p.score} 分</span>
           </li>
         ))}
         {game.kicked.map((p) => (
-          <li key={p.id} className="flex justify-between rounded-lg px-3 py-1 text-sm text-slate-400">
+          <li key={p.id} className="flex justify-between rounded-lg px-3 py-1 text-sm text-ink-muted">
             <span>{`${p.name}（已移出）`}</span>
             <span>{p.score} 分</span>
           </li>
@@ -127,7 +127,7 @@ export function GameOverPanel({ game, isHost, hostName, busy, onRestart, onLeave
             再玩一場
           </ActionButton>
         ) : (
-          <p data-testid="waiting-replay" className="self-center text-sm text-slate-600">{`等待房主 ${hostName} 開始下一場`}</p>
+          <p data-testid="waiting-replay" className="self-center text-sm text-ink-muted">{`等待房主 ${hostName} 開始下一場`}</p>
         )}
         <ActionButton testId="leave-room" tone="secondary" hint={{ enabled: true, reason: null }} busy={busy} onClick={onLeave}>
           離開房間

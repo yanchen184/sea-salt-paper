@@ -73,7 +73,7 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
 
   let body
   if (join.status === 'failed') body = <Notice text={join.message} />
-  else if (!joined || room === undefined) body = <p className="text-center text-sky-700">連線中…</p>
+  else if (!joined || room === undefined) body = <p className="text-center text-ink-muted">連線中…</p>
   else if (room === null) body = <Notice text="這個房間已不存在" />
   else if (kicked) body = <Notice text="你已被房主移出這個房間" testId="kicked-notice" />
   else if (room.status === 'lobby')
@@ -82,7 +82,7 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
   else body = <Notice text="找不到對局資料" />
 
   return (
-    <main className={`mx-auto flex min-h-screen flex-col gap-4 px-4 py-8 ${room?.status === 'lobby' || !room ? 'max-w-2xl' : 'max-w-4xl'}`}>
+    <main className={`mx-auto flex min-h-screen flex-col gap-4 px-4 pb-8 pt-14 ${room?.status === 'lobby' || !room ? 'max-w-2xl' : 'max-w-4xl'}`}>
       {body}
       <ErrorBanner message={kicked ? null : error} onDismiss={() => setError(null)} />
     </main>
@@ -91,9 +91,9 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
 
 function Notice({ text, testId }: { text: string; testId?: string }) {
   return (
-    <section data-testid={testId ?? 'room-notice'} className="space-y-4 rounded-2xl bg-white p-6 text-center shadow-sm">
-      <p className="text-lg text-slate-800">{text}</p>
-      <button type="button" onClick={() => navigate({ name: 'home' })} className="rounded-lg bg-sky-600 px-5 py-2 font-semibold text-white hover:bg-sky-700">
+    <section data-testid={testId ?? 'room-notice'} className="space-y-4 rounded-2xl bg-surface p-6 text-center shadow-sm">
+      <p className="text-lg text-ink">{text}</p>
+      <button type="button" onClick={() => navigate({ name: 'home' })} className="rounded-lg bg-accent px-5 py-2 font-semibold text-on-accent hover:brightness-110">
         回首頁
       </button>
     </section>

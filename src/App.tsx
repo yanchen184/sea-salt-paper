@@ -10,7 +10,7 @@ export default function App() {
   const [nickname, setNickname] = useState(loadNickname)
 
   if (auth.status === 'loading') {
-    return <p className="flex min-h-screen items-center justify-center text-sky-700">登入中…</p>
+    return <p className="flex min-h-screen items-center justify-center text-ink-muted">登入中…</p>
   }
   if (auth.status === 'error') {
     return (

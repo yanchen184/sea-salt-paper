@@ -1,6 +1,6 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { markOffline, placeGame, readRoom } from './admin'
-import { createRoom, joinRoom, openHome, playerNames } from './helpers'
+import { expect, test, createRoom, joinRoom, openHome, playerNames } from './helpers'
 
 interface Table {
   code: string
