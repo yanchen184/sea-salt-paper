@@ -37,11 +37,13 @@ getLegalActions(state: GameState, playerId: string): LegalActions
   - `DRAW_DECK` → 進入 `chooseDrawn`，被抽的 2 張存在 `pendingDraw`
   - `KEEP_DRAWN { keepCardId, discardPile: 0 | 1 }`
   - `TAKE_DISCARD { pile: 0 | 1 }`
-  - `PLAY_DUO { cardIds: [string, string], crab?: { pile: 0 | 1, cardId: string }, steal?: { targetId: string } }`
+  - `PLAY_DUO { cardIds: [string, string], crab?: { pile: 0 | 1 }, steal?: { targetId: string } }`：crab 對指定非空棄牌堆後進入 `crabPick`，該堆存在 `crabPile`
+  - `PICK_CRAB { cardId }`：`crabPick` 階段從 `crabPile` 挑 1 張，回到 `actions`
   - `DECLARE { kind: 'stop' | 'lastChance' }`
   - `END_TURN`
   - `NEXT_ROUND`（房主在計分畫面按，開下一局）
-- 回合內 phase：`draw` → (`chooseDrawn`) → `actions` → 回合結束；局的狀態：`playing` | `roundEnd` | `gameOver`。
+- 回合內 phase：`draw` → (`chooseDrawn`) → `actions` ⇄ (`crabPick`) → 回合結束；局的狀態：`playing` | `roundEnd` | `gameOver`。
+- `removePlayer(state, playerId): ActionResult`：踢出玩家（規則 §8）。誰能踢（房主、對方離線）由 room repository 判斷，引擎不管。被移出的牌放在 `state.removed`，被踢者的紀錄放在 `state.kicked`。
 
 ## Firestore 資料模型
 
@@ -61,6 +63,9 @@ getLegalActions(state: GameState, playerId: string): LegalActions
 
 - 每個動作：`runTransaction` 讀房間 → `applyAction` → 寫回並 `version + 1`。同時送出的兩個動作由 transaction 保證只有一個成立。
 - 全部狀態放在同一份文件，保持 transaction 簡單；58 張牌的狀態遠小於 1MB 上限。
+- 在線狀態放在子集合 `rooms/{code}/presence/{uid}`：`{ lastSeen: Timestamp }`，每位玩家 15 秒寫一次；超過 45 秒沒更新視為離線。和房間文件分開，心跳不會跟動作的 transaction 衝突。
+- 踢人：`kickPlayer(code, hostUid, targetUid)` 在 transaction 內確認呼叫者是房主、對方離線，再呼叫 `removePlayer` 並把對方從 `players` 移除。
+- 再玩一場：`restartGame(code, hostUid)`，房主在 `status: 'finished'` 時呼叫，用目前的 `players` 重新 `createGame`，`status = 'playing'`。
 
 ### 已知限制
 
