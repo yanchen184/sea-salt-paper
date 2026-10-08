@@ -30,8 +30,9 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   MUST_USE_EMPTY_PILE: '有空的棄牌堆時，必須放到空的那一堆',
   CARD_NOT_FOUND: '找不到這張牌',
   INVALID_DUO: '這兩張牌不能組成 Duo',
-  CRAB_TARGET_REQUIRED: '請選擇要從哪個棄牌堆拿哪一張牌',
-  INVALID_CRAB_TARGET: '這張牌不在指定的棄牌堆裡',
+  CRAB_TARGET_REQUIRED: '請選擇要從哪個棄牌堆挑牌',
+  INVALID_CRAB_TARGET: '只能選非空的棄牌堆',
+  MUST_PICK_CRAB: '請先從棄牌堆挑 1 張牌',
   STEAL_TARGET_REQUIRED: '請選擇要偷牌的對手',
   INVALID_STEAL_TARGET: '不能偷這位玩家的牌',
   ALREADY_DECLARED: '這一局已經有人宣告',
@@ -87,7 +88,11 @@ function stealTargets(s: GameState, thiefIndex: number): string[] {
 }
 
 function startRound(s: GameState, starter: number): void {
-  const [deck, rngState] = shuffle(buildDeck(), s.rngState)
+  const removedIds = new Set(s.removed.map((c) => c.id))
+  const [deck, rngState] = shuffle(
+    buildDeck().filter((c) => !removedIds.has(c.id)),
+    s.rngState,
+  )
   const [left, right, ...rest] = deck
   if (!left || !right) throw new Error('牌組不足 2 張')
   s.rngState = rngState
@@ -100,6 +105,7 @@ function startRound(s: GameState, starter: number): void {
   s.phase = 'draw'
   s.status = 'playing'
   s.pendingDraw = []
+  s.crabPile = null
   s.extraTurn = false
   s.declaration = null
   s.roundResult = null
@@ -124,11 +130,14 @@ export function createGame(players: PlayerSeat[], seed: number): GameState {
     phase: 'draw',
     status: 'playing',
     pendingDraw: [],
+    crabPile: null,
     extraTurn: false,
     declaration: null,
     roundResult: null,
     winnerId: null,
     winReason: null,
+    removed: [],
+    kicked: [],
     log: [],
   }
   startRound(s, starter)
@@ -269,13 +278,13 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
   const effect = duoEffect(a.kind, b.kind)
   if (!effect) return fail('INVALID_DUO')
 
-  let crabIndex = -1
+  let crabPile: PileIndex | null = null
   if (effect === 'crab') {
     const available = nonEmptyPiles(s)
     if (action.crab) {
-      if (!isPile(action.crab.pile)) return fail('INVALID_CRAB_TARGET')
-      crabIndex = s.discards[action.crab.pile].cards.findIndex((c) => c.id === action.crab?.cardId)
-      if (crabIndex < 0) return fail('INVALID_CRAB_TARGET')
+      const pile = action.crab.pile
+      if (!isPile(pile) || !available.includes(pile)) return fail('INVALID_CRAB_TARGET')
+      crabPile = pile
     } else if (available.length > 0) {
       return fail('CRAB_TARGET_REQUIRED')
     }
@@ -297,9 +306,10 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
 
   switch (effect) {
     case 'crab': {
-      if (action.crab && crabIndex >= 0) {
-        player.hand.push(...s.discards[action.crab.pile].cards.splice(crabIndex, 1))
-        addLog(s, `${player.name} 打出螃蟹對，從${PILE_NAMES[action.crab.pile]}棄牌堆挑了 1 張`)
+      if (crabPile !== null) {
+        s.phase = 'crabPick'
+        s.crabPile = crabPile
+        addLog(s, `${player.name} 打出螃蟹對，正在從${PILE_NAMES[crabPile]}棄牌堆挑牌`)
       } else {
         addLog(s, `${player.name} 打出螃蟹對，棄牌堆都是空的，沒有效果`)
       }
@@ -328,6 +338,19 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
       }
       break
   }
+  return null
+}
+
+function pickCrab(s: GameState, cardId: unknown): ActionError | null {
+  if (s.phase !== 'crabPick' || s.crabPile === null) return fail('WRONG_PHASE')
+  const pile = s.discards[s.crabPile]
+  const index = pile.cards.findIndex((c) => c.id === cardId)
+  if (index < 0) return fail('CARD_NOT_FOUND')
+  const player = currentPlayer(s)
+  player.hand.push(...pile.cards.splice(index, 1))
+  addLog(s, `${player.name} 從${PILE_NAMES[s.crabPile]}棄牌堆挑了 1 張`)
+  s.phase = 'actions'
+  s.crabPile = null
   return null
 }
 
@@ -373,6 +396,7 @@ function handle(s: GameState, playerId: string, action: Action): ActionError | n
   if (action.type === 'NEXT_ROUND') return nextRound(s)
   if (s.status !== 'playing') return fail('GAME_NOT_PLAYING')
   if (index !== s.current) return fail('NOT_YOUR_TURN')
+  if (s.phase === 'crabPick' && action.type !== 'PICK_CRAB') return fail('MUST_PICK_CRAB')
 
   switch (action.type) {
     case 'DRAW_DECK':
@@ -383,6 +407,8 @@ function handle(s: GameState, playerId: string, action: Action): ActionError | n
       return takeDiscard(s, action.pile)
     case 'PLAY_DUO':
       return playDuo(s, action)
+    case 'PICK_CRAB':
+      return pickCrab(s, action.cardId)
     case 'DECLARE':
       return declare(s, action.kind)
     case 'END_TURN':
@@ -418,6 +444,7 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
     takeDiscard: [],
     duos: [],
     crabPiles: [],
+    crabPick: null,
     stealTargets: [],
     declare: false,
     endTurn: false,
@@ -439,6 +466,10 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
         keepDrawn: { cardIds: state.pendingDraw.map((c) => c.id), piles: empties.length > 0 ? empties : [0, 1] },
       }
     }
+    case 'crabPick': {
+      const pile = state.crabPile === null ? [] : state.discards[state.crabPile].cards
+      return { ...mine, crabPick: pile.map((c) => c.id) }
+    }
     case 'actions': {
       const player = currentPlayer(state)
       return {
@@ -451,4 +482,61 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
       }
     }
   }
+}
+
+/** 移除後的座位：在被移除者之後的往前一格；原本指向被移除者的改指座位上的下一位 */
+function seatAfterRemoval(seat: number, removed: number, count: number): number {
+  if (seat > removed) return seat - 1
+  if (seat === removed) return removed % count
+  return seat
+}
+
+/** 規則 §8：踢出玩家，對局少 1 人繼續 */
+export function removePlayer(state: GameState, playerId: string): ActionResult {
+  const index = state.players.findIndex((p) => p.id === playerId)
+  if (index < 0) return { ok: false, error: fail('UNKNOWN_PLAYER') }
+  if (state.status === 'gameOver') return { ok: false, error: fail('GAME_NOT_PLAYING') }
+
+  const s = structuredClone(state)
+  const kicked = s.players[index] as PlayerState
+  const wasCurrent = index === s.current && s.status === 'playing'
+
+  s.removed.push(...kicked.hand, ...kicked.field)
+  if (wasCurrent) {
+    s.removed.push(...s.pendingDraw)
+    s.pendingDraw = []
+    s.crabPile = null
+    s.extraTurn = false
+  }
+  s.kicked.push({ id: kicked.id, name: kicked.name, score: kicked.score })
+  s.players = s.players.filter((p) => p !== kicked)
+  const count = s.players.length
+  s.current = seatAfterRemoval(s.current, index, count)
+  s.roundStarter = seatAfterRemoval(s.roundStarter, index, count)
+  if (s.roundResult) {
+    s.roundResult = { ...s.roundResult, scores: s.roundResult.scores.filter((sc) => sc.playerId !== kicked.id) }
+  }
+  addLog(s, `${kicked.name} 被房主移出遊戲`)
+
+  if (count === 1) {
+    const winner = s.players[0] as PlayerState
+    s.status = 'gameOver'
+    s.winnerId = winner.id
+    s.winReason = 'lastPlayer'
+    addLog(s, `只剩 ${winner.name}，${winner.name} 獲勝`)
+    return { ok: true, state: s }
+  }
+
+  s.targetScore = TARGET_SCORES[count] ?? s.targetScore
+  if (s.status === 'playing') {
+    if (s.declaration?.playerId === kicked.id) {
+      s.declaration = null
+      addLog(s, `${kicked.name} 的 LAST CHANCE 宣告取消`)
+    }
+    if (wasCurrent) {
+      if (s.declaration?.kind === 'lastChance' && currentPlayer(s).id === s.declaration.playerId) finishRound(s)
+      else beginTurn(s)
+    }
+  }
+  return { ok: true, state: s }
 }

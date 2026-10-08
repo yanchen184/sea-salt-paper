@@ -54,7 +54,7 @@ export interface DiscardPile {
   cards: Card[]
 }
 
-export type Phase = 'draw' | 'chooseDrawn' | 'actions'
+export type Phase = 'draw' | 'chooseDrawn' | 'actions' | 'crabPick'
 export type GameStatus = 'playing' | 'roundEnd' | 'gameOver'
 export type DeclareKind = 'stop' | 'lastChance'
 
@@ -78,6 +78,12 @@ export interface RoundResult {
   scores: PlayerRoundScore[]
 }
 
+export interface KickedPlayer {
+  id: string
+  name: string
+  score: number
+}
+
 export interface LogEntry {
   round: number
   text: string
@@ -96,11 +102,16 @@ export interface GameState {
   phase: Phase
   status: GameStatus
   pendingDraw: Card[]
+  /** crabPick 階段正在挑牌的棄牌堆 */
+  crabPile: PileIndex | null
   extraTurn: boolean
   declaration: Declaration | null
   roundResult: RoundResult | null
   winnerId: string | null
-  winReason: 'score' | 'mermaids' | null
+  winReason: 'score' | 'mermaids' | 'lastPlayer' | null
+  /** 被踢出玩家的牌，本場不再使用 */
+  removed: Card[]
+  kicked: KickedPlayer[]
   log: LogEntry[]
 }
 
@@ -111,9 +122,10 @@ export type Action =
   | {
       type: 'PLAY_DUO'
       cardIds: [string, string]
-      crab?: { pile: PileIndex; cardId: string }
+      crab?: { pile: PileIndex }
       steal?: { targetId: string }
     }
+  | { type: 'PICK_CRAB'; cardId: string }
   | { type: 'DECLARE'; kind: DeclareKind }
   | { type: 'END_TURN' }
   | { type: 'NEXT_ROUND' }
@@ -132,6 +144,7 @@ export type ErrorCode =
   | 'INVALID_DUO'
   | 'CRAB_TARGET_REQUIRED'
   | 'INVALID_CRAB_TARGET'
+  | 'MUST_PICK_CRAB'
   | 'STEAL_TARGET_REQUIRED'
   | 'INVALID_STEAL_TARGET'
   | 'ALREADY_DECLARED'
@@ -153,6 +166,8 @@ export interface LegalActions {
   /** 手牌中所有可打出的組合 */
   duos: [string, string][]
   crabPiles: PileIndex[]
+  /** crabPick 階段可挑的牌 */
+  crabPick: string[] | null
   stealTargets: string[]
   declare: boolean
   endTurn: boolean

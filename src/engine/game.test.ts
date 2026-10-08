@@ -197,7 +197,7 @@ describe('G4 Duo 共通', () => {
       expect(rejectCode(s, 'a', { type: 'PLAY_DUO', cardIds: pair })).toBe('INVALID_DUO')
     }
     expect(rejectCode(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-3'] })).toBe('CARD_NOT_FOUND')
-    act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0, cardId: 'penguin-1' } })
+    act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
     act(s, 'a', { type: 'PLAY_DUO', cardIds: ['boat-1', 'boat-2'] })
     act(s, 'a', { type: 'PLAY_DUO', cardIds: ['fish-1', 'fish-2'] })
     act(s, 'a', { type: 'PLAY_DUO', cardIds: ['swimmer-1', 'shark-1'], steal: { targetId: 'b' } })
@@ -239,19 +239,55 @@ describe('G4a crab', () => {
   it('[G4a-1] 指定非空棄牌堆挑任意 1 張入手，其餘順序不變', () => {
     const s = setup({ hands: [['crab-1', 'crab-2'], []], discards: [['shell-1', 'octopus-1', 'boat-1'], ['fish-1']] })
     expect(rejectCode(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'] })).toBe('CRAB_TARGET_REQUIRED')
-    expect(
-      rejectCode(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 1, cardId: 'octopus-1' } }),
-    ).toBe('INVALID_CRAB_TARGET')
-    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0, cardId: 'octopus-1' } })
+    let t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
+    expect(rejectCode(t, 'a', { type: 'PICK_CRAB', cardId: 'fish-1' })).toBe('CARD_NOT_FOUND')
+    t = act(t, 'a', { type: 'PICK_CRAB', cardId: 'octopus-1' })
     expect(ids(playerOf(t, 'a').hand)).toEqual(['octopus-1'])
     expect(ids(t.discards[0].cards)).toEqual(['shell-1', 'boat-1'])
     expect(ids(t.discards[1].cards)).toEqual(['fish-1'])
+    expect(t.phase).toBe('actions')
+    expect(t.crabPile).toBeNull()
   })
 
   it('[G4a-2] 被挑的牌不出現在動作紀錄', () => {
     const s = setup({ hands: [['crab-1', 'crab-2'], []], discards: [['shell-1', 'octopus-1', 'boat-1'], ['fish-1']] })
-    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0, cardId: 'octopus-1' } })
-    expect(newLogs(s, t)).toEqual(['Amy 打出螃蟹對，從左棄牌堆挑了 1 張'])
+    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
+    const u = act(t, 'a', { type: 'PICK_CRAB', cardId: 'octopus-1' })
+    expect(newLogs(s, u)).toEqual(['Amy 打出螃蟹對，正在從左棄牌堆挑牌', 'Amy 從左棄牌堆挑了 1 張'])
+    expect(newLogs(s, u).join()).not.toMatch(/章魚/)
+  })
+
+  it('[G4a-3] 打出時只指定棄牌堆，之後才挑牌', () => {
+    const s = setup({ hands: [['crab-1', 'crab-2'], []], discards: [['shell-1', 'octopus-1'], []] })
+    expect(getLegalActions(s, 'a').crabPick).toBeNull()
+    expect(rejectCode(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 1 } })).toBe(
+      'INVALID_CRAB_TARGET',
+    )
+    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
+    expect(t.phase).toBe('crabPick')
+    expect(t.crabPile).toBe(0)
+    expect(ids(playerOf(t, 'a').field)).toEqual(['crab-1', 'crab-2'])
+    expect(getLegalActions(t, 'a').crabPick).toEqual(['shell-1', 'octopus-1'])
+    expect(getLegalActions(t, 'b').crabPick).toBeNull()
+  })
+
+  it('[G4a-3] 挑牌階段只接受 PICK_CRAB', () => {
+    const s = setup({ hands: [['crab-1', 'crab-2', 'boat-1', 'boat-2'], []], discards: [['shell-1'], []] })
+    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
+    expect(rejectCode(t, 'a', { type: 'END_TURN' })).toBe('MUST_PICK_CRAB')
+    expect(rejectCode(t, 'a', { type: 'PLAY_DUO', cardIds: ['boat-1', 'boat-2'] })).toBe('MUST_PICK_CRAB')
+    expect(rejectCode(t, 'a', { type: 'DECLARE', kind: 'stop' })).toBe('MUST_PICK_CRAB')
+    expect(rejectCode(t, 'b', { type: 'PICK_CRAB', cardId: 'shell-1' })).toBe('NOT_YOUR_TURN')
+    expect(rejectCode(s, 'a', { type: 'PICK_CRAB', cardId: 'shell-1' })).toBe('WRONG_PHASE')
+    const legal = getLegalActions(t, 'a')
+    expect(legal.endTurn || legal.declare || legal.duos.length > 0).toBe(false)
+  })
+
+  it('[G4a-3] 挑到第 4 張美人魚立即獲勝', () => {
+    const s = setup({ hands: [['crab-1', 'crab-2', 'mermaid-1', 'mermaid-2', 'mermaid-3'], []], discards: [['mermaid-4'], []] })
+    const t = act(s, 'a', { type: 'PLAY_DUO', cardIds: ['crab-1', 'crab-2'], crab: { pile: 0 } })
+    expect(t.status).toBe('playing')
+    expect(act(t, 'a', { type: 'PICK_CRAB', cardId: 'mermaid-4' }).winReason).toBe('mermaids')
   })
 })
 
