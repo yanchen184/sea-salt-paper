@@ -11,7 +11,8 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "scripts"]
+  "include": ["vite.config.ts", "vitest.emu.config.ts", "playwright.config.ts", "scripts", "tests"]
 }

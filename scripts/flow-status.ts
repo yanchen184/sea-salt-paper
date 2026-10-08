@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const FLOW_FILE = join(ROOT, 'docs/spec/01-flow.md')
 const OUTPUT_FILE = join(ROOT, 'docs/flow-status.md')
-const RESULT_FILE = join(ROOT, 'node_modules/.tmp/vitest-results.json')
+const TMP_DIR = join(ROOT, 'node_modules/.tmp')
 
 interface FlowNode {
   id: string
@@ -19,6 +19,24 @@ type ConditionResult = 'passed' | 'failed'
 interface VitestReport {
   success: boolean
   testResults: { name: string; status: string; assertionResults: { title: string; status: string }[] }[]
+}
+
+interface PlaywrightSuite {
+  title: string
+  specs: { title: string; ok: boolean }[]
+  suites?: PlaywrightSuite[]
+}
+
+interface PlaywrightReport {
+  suites: PlaywrightSuite[]
+  stats: { unexpected: number; flaky: number }
+}
+
+/** 一個測試套件的結果：每個測試的標題與是否通過 */
+interface SuiteRun {
+  label: string
+  ok: boolean
+  tests: { title: string; passed: boolean }[]
 }
 
 function parseFlow(markdown: string): FlowNode[] {
@@ -34,30 +52,49 @@ function parseFlow(markdown: string): FlowNode[] {
   return nodes
 }
 
-function runVitest(): VitestReport {
-  mkdirSync(dirname(RESULT_FILE), { recursive: true })
-  const vitest = join(ROOT, 'node_modules/vitest/vitest.mjs')
-  const run = spawnSync(process.execPath, [vitest, 'run', '--reporter=json', `--outputFile=${RESULT_FILE}`], {
-    cwd: ROOT,
-    stdio: ['ignore', 'ignore', 'inherit'],
-  })
+function run(label: string, args: string[], resultFile: string): unknown {
+  mkdirSync(TMP_DIR, { recursive: true })
+  rmSync(resultFile, { force: true })
+  const result = spawnSync(process.execPath, args, { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] })
   try {
-    return JSON.parse(readFileSync(RESULT_FILE, 'utf8')) as VitestReport
+    return JSON.parse(readFileSync(resultFile, 'utf8'))
   } catch {
-    throw new Error(`Vitest 沒有產生結果（exit ${run.status}）`)
+    throw new Error(`${label} 沒有產生結果（exit ${result.status}）`)
   }
 }
 
-function collectResults(report: VitestReport): Map<string, ConditionResult> {
+function runVitest(label: string, config: string | null): SuiteRun {
+  const resultFile = join(TMP_DIR, `vitest-${label}-results.json`)
+  const vitest = join(ROOT, 'node_modules/vitest/vitest.mjs')
+  const args = [vitest, 'run', '--reporter=json', `--outputFile=${resultFile}`, ...(config ? ['--config', config] : [])]
+  const report = run(label, args, resultFile) as VitestReport
+  const tests = report.testResults.flatMap((f) =>
+    f.assertionResults
+      .filter((t) => t.status === 'passed' || t.status === 'failed')
+      .map((t) => ({ title: t.title, passed: t.status === 'passed' })),
+  )
+  return { label, ok: report.success, tests }
+}
+
+function flattenSpecs(suites: PlaywrightSuite[]): { title: string; ok: boolean }[] {
+  return suites.flatMap((s) => [...s.specs, ...flattenSpecs(s.suites ?? [])])
+}
+
+function runPlaywright(): SuiteRun {
+  const resultFile = join(TMP_DIR, 'playwright-results.json')
+  const cli = join(ROOT, 'node_modules/@playwright/test/cli.js')
+  const report = run('playwright', [cli, 'test'], resultFile) as PlaywrightReport
+  const tests = flattenSpecs(report.suites).map((t) => ({ title: t.title, passed: t.ok }))
+  return { label: 'playwright', ok: report.stats.unexpected === 0, tests }
+}
+
+function collectResults(runs: SuiteRun[]): Map<string, ConditionResult> {
   const results = new Map<string, ConditionResult>()
-  for (const file of report.testResults) {
-    for (const test of file.assertionResults) {
-      if (test.status !== 'passed' && test.status !== 'failed') continue
-      const prefix = test.title.match(/^(\[[^\]]+\])+/)?.[0] ?? ''
-      for (const [, id] of prefix.matchAll(/\[([^\]]+)\]/g)) {
-        if (!id || results.get(id) === 'failed') continue
-        results.set(id, test.status)
-      }
+  for (const test of runs.flatMap((r) => r.tests)) {
+    const prefix = test.title.match(/^(\[[^\]]+\])+/)?.[0] ?? ''
+    for (const [, id] of prefix.matchAll(/\[([^\]]+)\]/g)) {
+      if (!id || results.get(id) === 'failed') continue
+      results.set(id, test.passed ? 'passed' : 'failed')
     }
   }
   return results
@@ -77,8 +114,8 @@ function nodeStatus(node: FlowNode, results: Map<string, ConditionResult>) {
 function main(): number {
   const nodes = parseFlow(readFileSync(FLOW_FILE, 'utf8'))
   const known = new Set(nodes.flatMap((n) => n.conditions))
-  const report = runVitest()
-  const results = collectResults(report)
+  const runs = [runVitest('unit', null), runVitest('emu', 'vitest.emu.config.ts'), runPlaywright()]
+  const results = collectResults(runs)
 
   const unknown = [...results.keys()].filter((id) => !known.has(id))
   if (unknown.length > 0) {
@@ -103,9 +140,9 @@ function main(): number {
   writeFileSync(OUTPUT_FILE, output)
   console.log(output)
 
-  const failedFiles = report.testResults.filter((f) => f.status !== 'passed').map((f) => f.name)
-  if (failedFiles.length > 0) console.error(`失敗的測試檔：${failedFiles.join(', ')}`)
-  return report.success ? 0 : 1
+  const failedRuns = runs.filter((r) => !r.ok).map((r) => r.label)
+  if (failedRuns.length > 0) console.error(`有失敗的測試套件：${failedRuns.join(', ')}`)
+  return failedRuns.length === 0 ? 0 : 1
 }
 
 process.exit(main())

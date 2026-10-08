@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(room) {
+      return request.auth.uid in room.playerUids;
+    }
+
+    function isKicked(room) {
+      return request.auth.uid in room.kickedUids;
+    }
+
+    function isNewRoom(code) {
+      let d = request.resource.data;
+      return d.code == code
+        && d.hostId == request.auth.uid
+        && d.status == 'lobby'
+        && d.players.size() == 1
+        && d.players[0].uid == request.auth.uid
+        && d.playerUids == [request.auth.uid]
+        && d.kickedUids == []
+        && d.game == null
+        && d.version == 0;
+    }
+
+    function isSelfJoin() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let count = before.players.size();
+      return before.status == 'lobby'
+        && !isMember(before)
+        && !isKicked(before)
+        && after.diff(before).affectedKeys().hasOnly(['players', 'playerUids', 'version', 'updatedAt'])
+        && after.players.size() == count + 1
+        && after.players.size() <= 4
+        && after.players[0:count] == before.players
+        && after.players[count].uid == request.auth.uid
+        && after.playerUids == before.playerUids.concat([request.auth.uid])
+        && after.version == before.version + 1;
+    }
+
+    match /rooms/{code} {
+      allow read: if signedIn() && (
+        resource == null
+        || resource.data.status in ['lobby', 'finished']
+        || isMember(resource.data)
+        || isKicked(resource.data)
+      );
+      allow create: if signedIn() && isNewRoom(code);
+      allow update: if signedIn() && (
+        (isMember(resource.data) && !isKicked(resource.data))
+        || isSelfJoin()
+        || (resource.data.status == 'finished' && isNewRoom(code))
+      );
+      allow delete: if signedIn() && isMember(resource.data) && resource.data.playerUids.size() == 1;
+
+      match /presence/{uid} {
+        function room() {
+          return get(/databases/$(database)/documents/rooms/$(code)).data;
+        }
+
+        allow read: if signedIn() && isMember(room());
+        allow write: if signedIn() && request.auth.uid == uid && isMember(room()) && !isKicked(room());
+      }
+    }
+  }
+}
