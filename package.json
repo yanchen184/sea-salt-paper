@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "flow:board": "tsx scripts/flow-board/server.ts",
+    "flow": "tsx scripts/flow-board/cli.ts",
+    "test:board": "vitest run --config vitest.board.config.ts",
     "flow:status": "firebase emulators:exec --only auth,firestore --project demo-sea-salt \"tsx scripts/flow-status.ts\"",
     "manual:screens": "firebase emulators:exec --only auth,firestore --project demo-sea-salt \"playwright test --config playwright.manual.config.ts\"",
     "test:emu": "firebase emulators:exec --only auth,firestore --project demo-sea-salt \"vitest run --config vitest.emu.config.ts && playwright test\""

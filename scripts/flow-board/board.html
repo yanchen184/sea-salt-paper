@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flow Board</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg: #f4f1ea; --panel: #fffdf8; --ink: #1f2933; --muted: #6b7280; --line: #ded8cc;
+    --pass: #1f8a4c; --pass-bg: #e3f4ea; --miss: #a86a00; --miss-bg: #fdf1d8;
+    --fail: #c0362c; --fail-bg: #fbe4e1; --unknown-bg: #ecebe7;
+    --work: #2f6fdb; --work-bg: #e3ecfc; --shadow: 0 1px 2px rgb(0 0 0 / .06), 0 2px 8px rgb(0 0 0 / .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161c; --panel: #1b2129; --ink: #e6e9ee; --muted: #9aa3ae; --line: #2c343f;
+      --pass: #4fc985; --pass-bg: #173325; --miss: #e3b25a; --miss-bg: #352a14;
+      --fail: #f0776c; --fail-bg: #3a1c1a; --unknown-bg: #262c34;
+      --work: #7aa7ff; --work-bg: #1c2b47; --shadow: 0 1px 2px rgb(0 0 0 / .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 18px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fail); }
+  .live.on .dot { background: var(--pass); }
+  .summary { display: flex; gap: 14px; font-size: 13px; color: var(--muted); }
+  .summary b { color: var(--ink); }
+  .me { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .me input { width: 150px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; }
+  .legend { display: flex; gap: 10px; font-size: 12px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; background: var(--c); }
+  main { padding: 16px; }
+  h2 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+  .lane { overflow-x: auto; padding: 4px 2px 16px; margin-bottom: 18px; }
+  .flow { display: flex; align-items: flex-start; gap: 0; width: max-content; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .arrow { align-self: flex-start; padding: 40px 8px 0; color: var(--muted); font-size: 18px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .card { width: 228px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 8px; box-shadow: var(--shadow); padding: 9px 10px; cursor: pointer; }
+  .card[data-status="pass"] { border-left-color: var(--pass); }
+  .card[data-status="miss"] { border-left-color: var(--miss); }
+  .card[data-status="fail"] { border-left-color: var(--fail); }
+  .card.working { outline: 2px solid var(--work); outline-offset: 1px; }
+  .top { display: flex; gap: 6px; align-items: baseline; }
+  .id { font: 700 13px ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .title { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .claim { margin: 7px 0; padding: 4px 7px; border-radius: 5px; font-size: 12px; display: flex; align-items: center; gap: 6px; background: var(--unknown-bg); color: var(--muted); }
+  .claim.on { background: var(--work-bg); color: var(--work); font-weight: 600; }
+  .claim button { margin-left: auto; border: 1px solid currentColor; background: transparent; color: inherit; border-radius: 4px; padding: 1px 7px; font: inherit; font-size: 12px; cursor: pointer; }
+  .conds { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cond { font: 600 11px ui-monospace, Consolas, monospace; padding: 2px 5px; border-radius: 4px; background: var(--unknown-bg); color: var(--muted); }
+  .cond.passed { background: var(--pass-bg); color: var(--pass); }
+  .cond.missing { background: var(--miss-bg); color: var(--miss); }
+  .cond.failed { background: var(--fail-bg); color: var(--fail); }
+  .commits { margin-top: 7px; font-size: 12px; color: var(--muted); display: grid; gap: 2px; }
+  .sha { font-family: ui-monospace, Consolas, monospace; color: var(--ink); }
+  .commits .more { font-style: italic; }
+  .detail { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 6px; font-size: 12px; display: grid; gap: 6px; }
+  .detail p { margin: 0; }
+  .detail .meta { color: var(--muted); }
+  .error { position: fixed; bottom: 16px; left: 16px; right: 16px; max-width: 520px; margin: auto; padding: 10px 14px; border-radius: 8px;
+    background: var(--fail-bg); color: var(--fail); box-shadow: var(--shadow); display: none; }
+  @media (max-width: 640px) { .me { margin-left: 0; } .card { width: 200px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Flow Board</h1>
+  <span class="live" id="live"><span class="dot"></span><span id="liveText">連線中</span></span>
+  <div class="summary" id="summary"></div>
+  <div class="legend">
+    <span style="--c: var(--pass)">測試通過</span><span style="--c: var(--miss)">缺測試</span>
+    <span style="--c: var(--fail)">失敗</span><span style="--c: var(--work)">有人在做</span>
+  </div>
+  <label class="me">我是 <input id="me" maxlength="40" placeholder="名字（領取用）" /></label>
+</header>
+<main>
+  <h2>主流程（由左至右）</h2>
+  <div class="lane" id="flowLane"><div class="flow" id="flow"></div></div>
+  <h2>橫切節點</h2>
+  <div id="extraLane"><div class="row" id="extras"></div></div>
+</main>
+<div class="error" id="error"></div>
+<script>
+  const STATUS = { '✅': 'pass', '🟡': 'miss', '⬜': 'miss', '❌': 'fail' }
+  const COND_LABEL = { passed: '測試通過', missing: '缺測試', failed: '測試失敗', unknown: '尚無狀態' }
+  const COND_MARK = { passed: '✓', missing: '缺', failed: '✗', unknown: '?' }
+  const expanded = new Set()
+  let board = null
+
+  const meInput = document.getElementById('me')
+  try { meInput.value = localStorage.getItem('flow-board-me') ?? '' } catch {}
+  meInput.addEventListener('input', () => {
+    try { localStorage.setItem('flow-board-me', meInput.value.trim()) } catch {}
+    render()
+  })
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag)
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') node.className = v
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v)
+      else if (v !== undefined && v !== null) node.setAttribute(k, v)
+    }
+    for (const c of children.flat()) if (c !== null && c !== undefined) node.append(c)
+    return node
+  }
+
+  function ago(iso) {
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+    if (min < 1) return '剛剛'
+    if (min < 60) return `${min} 分鐘`
+    const h = Math.floor(min / 60)
+    return h < 24 ? `${h} 小時 ${min % 60} 分` : `${Math.floor(h / 24)} 天`
+  }
+
+  function commitLine(c, label) {
+    return el('div', { title: `${c.sha}\n${c.subject}\n${c.author} · ${c.date}` },
+      label ? `${label} ` : '', el('span', { class: 'sha' }, c.sha.slice(0, 7)),
+      c.agent === c.author ? ` · ${c.author}` : ` · ${c.agent}（${c.author}）`)
+  }
+
+  async function act(path, node, force) {
+    const who = meInput.value.trim()
+    if (!who) return showError('先在右上角填名字')
+    const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ node, who, force }) })
+    if (!res.ok) showError((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+  }
+
+  function showError(text) {
+    const box = document.getElementById('error')
+    box.textContent = text
+    box.style.display = 'block'
+    clearTimeout(showError.timer)
+    showError.timer = setTimeout(() => { box.style.display = 'none' }, 4000)
+  }
+
+  function claimStrip(id) {
+    const claim = board.claims[id]
+    const me = meInput.value.trim()
+    const stop = (fn) => (e) => { e.stopPropagation(); fn() }
+    if (!claim) {
+      return el('div', { class: 'claim' }, '沒人領',
+        me ? el('button', { onclick: stop(() => act('/api/claim', id)) }, '我來做') : null)
+    }
+    const mine = claim.who === me
+    return el('div', { class: 'claim on', title: `領取時間 ${new Date(claim.at).toLocaleString()}` },
+      `● ${claim.who} 正在做 · ${ago(claim.at)}`,
+      mine ? el('button', { onclick: stop(() => act('/api/release', id)) }, '放手') : null)
+  }
+
+  function card(id) {
+    const n = board.nodes[id]
+    const working = Boolean(board.claims[id])
+    const open = expanded.has(id)
+    return el('article', {
+      class: `card${working ? ' working' : ''}`, 'data-status': STATUS[n.status] ?? 'none', 'data-node': id,
+      onclick: () => { open ? expanded.delete(id) : expanded.add(id); render() },
+    },
+      el('div', { class: 'top' }, el('span', { class: 'id' }, id), el('span', { class: 'title', title: n.title }, n.title), el('span', {}, n.status || '·')),
+      claimStrip(id),
+      el('div', { class: 'conds' }, n.conditions.map((c) =>
+        el('span', { class: `cond ${c.status}`, title: `${c.id} ${COND_LABEL[c.status]}\n${c.text}` },
+          `${c.id.slice(id.length + 1)} ${COND_MARK[c.status]} `,
+          c.firstCommit ? el('span', { class: 'sha' }, c.firstCommit.sha.slice(0, 7)) : '尚無測試 commit'))),
+      el('div', { class: 'commits' },
+        (open ? n.commits : n.commits.slice(0, 3)).map((c) => commitLine(c, '完成')),
+        !open && n.commits.length > 3 ? el('div', { class: 'more' }, `還有 ${n.commits.length - 3} 筆，點開看全部`) : null),
+      open ? el('div', { class: 'detail' }, n.conditions.map((c) =>
+        el('p', {}, el('b', {}, `${c.id} `), c.text,
+          el('br'), el('span', { class: 'meta' }, COND_LABEL[c.status],
+            c.firstCommit ? ` · 測試加入於 ${c.firstCommit.sha.slice(0, 7)}（${c.firstCommit.author}）` : '')))) : null,
+    )
+  }
+
+  function render() {
+    if (!board) return
+    const lane = document.getElementById('flowLane')
+    const scroll = lane.scrollLeft
+    const flow = document.getElementById('flow')
+    flow.replaceChildren(...board.columns.flatMap((col, i) => [
+      ...(i > 0 ? [el('div', { class: 'arrow' }, '→')] : []),
+      el('div', { class: 'col' }, col.map(card)),
+    ]))
+    lane.scrollLeft = scroll
+    document.getElementById('extras').replaceChildren(...board.extras.map(card))
+
+    const ids = Object.keys(board.nodes)
+    const done = ids.filter((id) => board.nodes[id].status === '✅').length
+    const working = Object.keys(board.claims).length
+    document.getElementById('summary').replaceChildren(
+      el('span', {}, '完成 ', el('b', {}, `${done}/${ids.length}`)),
+      el('span', {}, '進行中 ', el('b', {}, String(working))),
+      board.statusUpdatedAt ? el('span', {}, `狀態更新 ${ago(board.statusUpdatedAt)}前`) : el('span', {}, '尚未跑 flow:status'),
+    )
+  }
+
+  function connect() {
+    const live = document.getElementById('live')
+    const source = new EventSource('/api/events')
+    source.addEventListener('board', (e) => { board = JSON.parse(e.data); render() })
+    source.onopen = () => { live.classList.add('on'); document.getElementById('liveText').textContent = '即時同步' }
+    source.onerror = () => { live.classList.remove('on'); document.getElementById('liveText').textContent = '重新連線中' }
+  }
+
+  connect()
+  setInterval(render, 30000)
+</script>
+</body>
+</html>
