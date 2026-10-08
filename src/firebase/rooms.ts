@@ -15,7 +15,7 @@ import { generateRoomCode, randomSeed } from '../lib/roomCode'
 import { RoomError, type Room, type RoomPlayer } from './types'
 
 const MAX_PLAYERS = 4
-const MIN_PLAYERS = 2
+export const MIN_PLAYERS = 2
 const CREATE_ATTEMPTS = 10
 
 export interface RoomRepository {

@@ -1,7 +1,6 @@
+import { MIN_PLAYERS } from '../../firebase/rooms'
 import type { Room } from '../../firebase/types'
 import { PlayerList } from './PlayerList'
-
-const MIN_PLAYERS = 2
 
 interface LobbyViewProps {
   room: Room

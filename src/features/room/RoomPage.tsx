@@ -5,7 +5,7 @@ import { db, rooms } from '../../firebase/app'
 import { startHeartbeat, subscribePresence, type PresenceMap } from '../../firebase/presence'
 import type { Room } from '../../firebase/types'
 import { HEARTBEAT_MS, isOffline } from '../../lib/presence'
-import { GamePlaceholder } from '../game/GamePlaceholder'
+import { GameView } from '../game/GameView'
 import { LobbyView } from '../lobby/LobbyView'
 
 interface RoomPageProps {
@@ -78,12 +78,13 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
   else if (kicked) body = <Notice text="你已被房主移出這個房間" testId="kicked-notice" />
   else if (room.status === 'lobby')
     body = <LobbyView room={room} uid={uid} isOffline={offline} onStart={() => run(() => rooms.startGame(code, uid))} onLeave={leave} />
-  else body = <GamePlaceholder room={room} uid={uid} isOffline={offline} />
+  else if (room.game) body = <GameView room={room} game={room.game} uid={uid} isOffline={offline} run={run} onLeave={leave} />
+  else body = <Notice text="找不到對局資料" />
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8">
+    <main className={`mx-auto flex min-h-screen flex-col gap-4 px-4 py-8 ${room?.status === 'lobby' || !room ? 'max-w-2xl' : 'max-w-4xl'}`}>
       {body}
-      <ErrorBanner message={error} onDismiss={() => setError(null)} />
+      <ErrorBanner message={kicked ? null : error} onDismiss={() => setError(null)} />
     </main>
   )
 }

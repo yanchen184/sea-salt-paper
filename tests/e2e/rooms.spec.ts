@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { placeGame } from './admin'
 import { createRoom, joinRoom, openHome, playerNames } from './helpers'
 
 test('[A1-1] 首次進站自動匿名登入，暱稱 1–12 字才能建立或加入', async ({ browser }) => {
@@ -121,13 +122,15 @@ test('[A5-1] 遊戲中重整頁面，回到同一房間同一座位，手牌不�
   await host.getByTestId('start-game').click()
   await expect(guest.getByTestId('game-status')).toHaveText('遊戲進行中')
 
-  const handBefore = (await guest.getByTestId('hand-ids').textContent()) ?? ''
-  const countBefore = (await guest.getByTestId('hand-count').textContent()) ?? ''
+  await placeGame(code, { phase: 'draw', current: 1, hands: [[], ['octopus-1']], discards: [['shell-1'], []] })
+  await guest.getByTestId('action-take-0').click()
+  await expect(guest.getByTestId('hand-ids')).toHaveText('octopus-1,shell-1')
+
   await guest.reload()
   await expect(guest.getByTestId('game-status')).toHaveText('遊戲進行中')
   await expect(guest).toHaveURL(new RegExp(`#/room/${code}$`))
-  await expect(guest.getByTestId('hand-count')).toHaveText(countBefore)
-  await expect(guest.getByTestId('hand-ids')).toHaveText(handBefore)
+  await expect(guest.getByTestId('hand-count')).toHaveText('2')
+  await expect(guest.getByTestId('hand-ids')).toHaveText('octopus-1,shell-1')
   await expect(playerNames(guest)).toHaveText(['房主', '客人'])
   await expect(guest.getByTestId('player').nth(1)).toContainText('你')
 })
