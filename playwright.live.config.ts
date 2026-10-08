@@ -12,6 +12,7 @@ export default defineConfig({
   use: {
     baseURL: LIVE_URL.endsWith('/') ? LIVE_URL : `${LIVE_URL}/`,
     trace: 'retain-on-failure',
+    actionTimeout: 10_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 })

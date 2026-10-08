@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import type { Page } from '@playwright/test'
+import { errors, type Page } from '@playwright/test'
 import { expect, test, createRoom, joinRoom, openHome } from '../e2e/helpers'
 
 const PAIR_KINDS = ['crab', 'boat', 'fish']
@@ -11,8 +11,13 @@ function expectedSha(): string {
 async function clickIfEnabled(page: Page, testId: string): Promise<boolean> {
   const button = page.getByTestId(testId).first()
   if ((await button.count()) === 0 || !(await button.isEnabled())) return false
-  await button.click({ timeout: 5_000 })
+  await button.click()
   return true
+}
+
+async function setSelected(page: Page, id: string, selected: boolean): Promise<void> {
+  const card = page.locator(`[data-testid="hand-card"][data-card-id="${id}"]`)
+  if ((await card.getAttribute('aria-pressed')) !== String(selected)) await card.click()
 }
 
 async function playPair(page: Page): Promise<boolean> {
@@ -21,17 +26,27 @@ async function playPair(page: Page): Promise<boolean> {
   for (const kind of PAIR_KINDS) {
     const pair = ids.filter((id) => id.startsWith(`${kind}-`)).slice(0, 2)
     if (pair.length < 2) continue
-    for (const id of pair) await page.locator(`[data-testid="hand-card"][data-card-id="${id}"]`).click()
+    for (const id of pair) await setSelected(page, id, true)
     if (await clickIfEnabled(page, 'duo-crab-0')) return true
     if (await clickIfEnabled(page, 'duo-crab-1')) return true
     if (await clickIfEnabled(page, 'play-duo')) return true
-    for (const id of pair) await page.locator(`[data-testid="hand-card"][data-card-id="${id}"]`).click()
+    for (const id of pair) await setSelected(page, id, false)
   }
   return false
 }
 
-/** 輪到這個頁面時做一個動作；沒有可做的動作回傳 false */
+/** 畫面在動作途中被新狀態取代時回傳 false，由主迴圈重新讀取畫面 */
 async function step(page: Page): Promise<boolean> {
+  try {
+    return await act(page)
+  } catch (e) {
+    if (e instanceof errors.TimeoutError) return false
+    throw e
+  }
+}
+
+/** 輪到這個頁面時做一個動作；沒有可做的動作回傳 false */
+async function act(page: Page): Promise<boolean> {
   if ((await page.getByTestId('drawn-choice').count()) > 0) {
     await page.getByTestId('drawn-card').first().click()
     return (await clickIfEnabled(page, 'discard-to-0')) || (await clickIfEnabled(page, 'discard-to-1'))
