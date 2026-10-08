@@ -90,6 +90,23 @@ describe('G2 回合開始', () => {
     expect(legal).toMatchObject({ declare: false, endTurn: false, duos: [] })
   })
 
+  it('[G2-3] 牌庫與兩棄牌堆皆空時跳過取牌', () => {
+    // 牌庫空、只剩右堆 1 張；b 拿走後，額外回合無牌可取
+    let s = setup({ hands: [SEVEN_A, ['boat-1', 'boat-2']], deck: [], discards: [[], ['shell-5']] })
+    s = act(s, 'a', { type: 'DECLARE', kind: 'lastChance' })
+    expect(s.current).toBe(1)
+    expect(s.phase).toBe('draw')
+    s = act(s, 'b', { type: 'TAKE_DISCARD', pile: 1 })
+    s = act(s, 'b', { type: 'PLAY_DUO', cardIds: ['boat-1', 'boat-2'] })
+    s = act(s, 'b', { type: 'END_TURN' })
+    // 帆船額外回合：牌庫與棄牌堆都空 → 直接進入 actions
+    expect(s.current).toBe(1)
+    expect(s.phase).toBe('actions')
+    expect(getLegalActions(s, 'b')).toMatchObject({ drawDeck: false, takeDiscard: [], endTurn: true })
+    s = act(s, 'b', { type: 'END_TURN' })
+    expect(s.roundResult?.reason).toBe('lastChance')
+  })
+
   it('[G2-2] 傳入的 state 不被修改', () => {
     const s = setup({ phase: 'draw', discards: [['shell-5'], ['shell-6']] })
     const snapshot = structuredClone(s)

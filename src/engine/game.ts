@@ -185,11 +185,21 @@ function checkMermaids(s: GameState): void {
   addLog(s, `${winner.name} 集滿 4 張美人魚，立即獲勝`)
 }
 
+/** 規則 3.1：牌庫與兩棄牌堆皆空時跳過取牌 */
+function beginTurn(s: GameState): void {
+  if (s.deck.length === 0 && nonEmptyPiles(s).length === 0) {
+    s.phase = 'actions'
+    addLog(s, `${currentPlayer(s).name} 無牌可取，跳過取牌`)
+  } else {
+    s.phase = 'draw'
+  }
+}
+
 function advanceTurn(s: GameState): void {
   if (s.extraTurn) {
     s.extraTurn = false
-    s.phase = 'draw'
     addLog(s, `${currentPlayer(s).name} 進行額外回合`)
+    beginTurn(s)
     return
   }
   const next = (s.current + 1) % s.players.length
@@ -198,7 +208,7 @@ function advanceTurn(s: GameState): void {
     return
   }
   s.current = next
-  s.phase = 'draw'
+  beginTurn(s)
 }
 
 function drawDeck(s: GameState): ActionError | null {
