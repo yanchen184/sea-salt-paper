@@ -17,7 +17,8 @@ interface FlowNode {
 type ConditionResult = 'passed' | 'failed'
 
 interface VitestReport {
-  testResults: { assertionResults: { title: string; status: string }[] }[]
+  success: boolean
+  testResults: { name: string; status: string; assertionResults: { title: string; status: string }[] }[]
 }
 
 function parseFlow(markdown: string): FlowNode[] {
@@ -76,7 +77,8 @@ function nodeStatus(node: FlowNode, results: Map<string, ConditionResult>) {
 function main(): number {
   const nodes = parseFlow(readFileSync(FLOW_FILE, 'utf8'))
   const known = new Set(nodes.flatMap((n) => n.conditions))
-  const results = collectResults(runVitest())
+  const report = runVitest()
+  const results = collectResults(report)
 
   const unknown = [...results.keys()].filter((id) => !known.has(id))
   if (unknown.length > 0) {
@@ -101,8 +103,9 @@ function main(): number {
   writeFileSync(OUTPUT_FILE, output)
   console.log(output)
 
-  const anyFailed = [...results.values()].includes('failed')
-  return anyFailed ? 1 : 0
+  const failedFiles = report.testResults.filter((f) => f.status !== 'passed').map((f) => f.name)
+  if (failedFiles.length > 0) console.error(`失敗的測試檔：${failedFiles.join(', ')}`)
+  return report.success ? 0 : 1
 }
 
 process.exit(main())
