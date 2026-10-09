@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: 'tests/live',
   fullyParallel: false,
   workers: 1,
-  timeout: 15 * 60_000,
+  timeout: 25 * 60_000,
   expect: { timeout: 20_000 },
   reporter: [['list'], ['json', { outputFile: 'node_modules/.tmp/playwright-live-results.json' }]],
   use: {

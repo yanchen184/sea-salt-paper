@@ -1,8 +1,15 @@
+/// <reference lib="dom" />
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { Browser, Page } from '@playwright/test'
+import { exportBoard, resolveCommit } from '../../scripts/flow-board/export'
 import { markOffline, placeGame, readRoom } from '../e2e/admin'
 import { expect, test, createRoom, joinRoom, openHome } from '../e2e/helpers'
 
 const OUT = 'docs/manual/img'
+const REPO = join(import.meta.dirname, '../..')
 
 async function shot(page: Page, name: string): Promise<void> {
   await page.waitForTimeout(300)
@@ -29,6 +36,29 @@ async function start(host: Page, guests: Page[]): Promise<void> {
 
 function hand(page: Page, id: string) {
   return page.locator(`[data-testid="hand-card"][data-card-id="${id}"]`)
+}
+
+/** 安裝可暫停的計時器後才載入頁面，供 freezeAnimation 使用 */
+async function openWithClock(browser: Browser): Promise<Page> {
+  const page = await (await browser.newContext()).newPage()
+  await page.clock.install()
+  await page.goto('./')
+  await expect(page.getByTestId('nickname')).toBeVisible()
+  return page
+}
+
+/** 動畫元素出現後暫停頁面計時器，並把動畫停在 progress（0～1）的位置 */
+async function freezeAnimation(page: Page, testId: string, progress: number): Promise<void> {
+  await page.getByTestId(testId).first().waitFor({ state: 'attached' })
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50))
+  await page.evaluate((p) => {
+    for (const a of document.querySelector('[data-testid="anim-layer"]')?.getAnimations({ subtree: true }) ?? []) {
+      const end = a.effect?.getComputedTiming().endTime
+      if (typeof end !== 'number') continue
+      a.pause()
+      a.currentTime = end * p
+    }
+  }, progress)
 }
 
 test('01 首頁與大廳', async ({ browser }) => {
@@ -208,4 +238,50 @@ test('08 深海夜航主題', async ({ browser }) => {
   await host.goto('./')
   await expect(host.getByTestId('nickname')).toBeVisible()
   await shot(host, '28-night-home')
+})
+
+test('09 AI 玩家', async ({ browser }) => {
+  const host = await openHome(browser)
+  await createRoom(host, '小海')
+  await host.getByTestId('add-ai').click()
+  await expect(host.getByTestId('ai-badge')).toHaveCount(1)
+  await shot(host, '29-lobby-ai')
+
+  const solo = await openHome(browser)
+  await solo.getByTestId('nickname').fill('阿鹽')
+  await solo.getByTestId('solo-2').click()
+  await expect(solo.getByTestId('game-status')).toHaveText('遊戲進行中')
+  await expect(solo.getByTestId('action-draw')).toBeEnabled({ timeout: 20_000 })
+  await shot(solo, '30-solo-game')
+})
+
+test('10 動作動畫', async ({ browser }) => {
+  const host = await openWithClock(browser)
+  const code = await createRoom(host, '小海')
+  const guest = await openHome(browser)
+  await joinRoom(guest, '阿鹽', code)
+  await expect(guest.getByTestId('lobby-code')).toHaveText(code)
+  await start(host, [guest])
+
+  await placeGame(code, { phase: 'draw', current: 1, hands: [['fish-1', 'octopus-1'], ['boat-1']], discards: [['shell-1'], ['crab-1']] })
+  await expect(guest.getByTestId('action-take-1')).toBeEnabled()
+  await guest.getByTestId('action-take-1').click()
+  await freezeAnimation(host, 'anim-flight', 0.5)
+  await shot(host, '31-anim-flight')
+  await host.clock.resume()
+
+  const shells = ['shell-1', 'shell-2', 'shell-3', 'shell-4', 'shell-5']
+  await placeGame(code, { phase: 'actions', current: 1, hands: [['fish-1'], shells], discards: [['crab-1'], ['crab-2']] })
+  await expect(guest.getByTestId('declare-stop')).toBeEnabled()
+  await guest.getByTestId('declare-stop').click()
+  await freezeAnimation(host, 'anim-banner', 0.5)
+  await shot(host, '32-anim-stop')
+  await host.clock.resume()
+})
+
+test('11 公開流程圖', async ({ page }) => {
+  const file = await exportBoard(REPO, mkdtempSync(join(tmpdir(), 'flow-manual-')), resolveCommit(process.env, REPO))
+  await page.goto(pathToFileURL(file).href)
+  await expect(page.locator('[data-node]').first()).toBeVisible()
+  await shot(page, '33-flow-page')
 })

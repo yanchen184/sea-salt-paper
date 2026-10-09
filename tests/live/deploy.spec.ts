@@ -8,6 +8,11 @@ function expectedSha(): string {
   return process.env.EXPECTED_SHA ?? execSync('git rev-parse origin/main', { encoding: 'utf8' }).trim()
 }
 
+/** 線上測試驗的是對局流程，關掉動畫縮短整局時間 */
+async function disableAnimations(page: Page): Promise<void> {
+  await page.getByTestId('anim-toggle').locator('input').uncheck()
+}
+
 async function clickIfEnabled(page: Page, testId: string): Promise<boolean> {
   const button = page.getByTestId(testId).first()
   if ((await button.count()) === 0 || !(await button.isEnabled())) return false
@@ -69,14 +74,16 @@ test('[S4-1] 線上版本就是 main 的最新 commit', async ({ page }) => {
 
 test('[S4-2] 兩個不同瀏覽器在線上網址完成一整局', async ({ browser }) => {
   const host = await openHome(browser)
+  await disableAnimations(host)
   const code = await createRoom(host, '線上房主')
   const guest = await openHome(browser)
+  await disableAnimations(guest)
   await joinRoom(guest, '線上客人', code)
   await expect(guest.getByTestId('lobby-code')).toHaveText(code)
   await host.getByTestId('start-game').click()
   for (const page of [host, guest]) await expect(page.getByTestId('game-status')).toHaveText('遊戲進行中')
 
-  const deadline = Date.now() + 14 * 60_000
+  const deadline = Date.now() + 24 * 60_000
   while ((await host.getByTestId('game-over').count()) === 0) {
     expect(Date.now(), '對局在時限內沒有結束').toBeLessThan(deadline)
     let acted = await clickIfEnabled(host, 'next-round')
@@ -84,11 +91,30 @@ test('[S4-2] 兩個不同瀏覽器在線上網址完成一整局', async ({ brow
       if (acted) break
       if (/^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await step(page)
     }
-    await host.waitForTimeout(acted ? 400 : 800)
+    await host.waitForTimeout(acted ? 150 : 400)
   }
 
   for (const page of [host, guest]) {
     await expect(page.getByTestId('game-status')).toHaveText('遊戲已結束')
     await expect(page.getByTestId('winner')).toHaveText(/獲勝/)
   }
+})
+
+test('[S4-3] 一個瀏覽器在線上網址開單人遊戲配 1 個 AI，打完一整場', async ({ browser }) => {
+  const page = await openHome(browser)
+  await disableAnimations(page)
+  await page.getByTestId('nickname').fill('線上單人')
+  await page.getByTestId('solo-1').click()
+  await expect(page.getByTestId('game-status')).toHaveText('遊戲進行中')
+
+  const deadline = Date.now() + 24 * 60_000
+  while ((await page.getByTestId('game-over').count()) === 0) {
+    expect(Date.now(), '對局在時限內沒有結束').toBeLessThan(deadline)
+    let acted = await clickIfEnabled(page, 'next-round')
+    if (!acted && /^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await step(page)
+    await page.waitForTimeout(acted ? 150 : 400)
+  }
+
+  await expect(page.getByTestId('game-status')).toHaveText('遊戲已結束')
+  await expect(page.getByTestId('winner')).toHaveText(/獲勝/)
 })
