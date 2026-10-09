@@ -25,9 +25,25 @@ async function setSelected(page: Page, id: string, selected: boolean): Promise<v
   if ((await card.getAttribute('aria-pressed')) !== String(selected)) await card.click()
 }
 
-async function playPair(page: Page): Promise<boolean> {
+async function handIds(page: Page): Promise<string[]> {
   const cards = await page.getByTestId('hand-card').all()
-  const ids = await Promise.all(cards.map(async (c) => (await c.getAttribute('data-card-id')) ?? ''))
+  return Promise.all(cards.map(async (c) => (await c.getAttribute('data-card-id')) ?? ''))
+}
+
+/** 棄牌堆頂能和手牌湊成一對時拿那張 */
+async function takePairingDiscard(page: Page): Promise<boolean> {
+  const ids = await handIds(page)
+  for (const pile of [0, 1]) {
+    const top = page.getByTestId(`discard-top-${pile}`)
+    if ((await top.count()) === 0) continue
+    const kind = ((await top.getAttribute('data-card-id')) ?? '').split('-')[0]
+    if (PAIR_KINDS.includes(kind) && ids.some((id) => id.startsWith(`${kind}-`)) && (await clickIfEnabled(page, `action-take-${pile}`))) return true
+  }
+  return false
+}
+
+async function playPair(page: Page): Promise<boolean> {
+  const ids = await handIds(page)
   for (const kind of PAIR_KINDS) {
     const pair = ids.filter((id) => id.startsWith(`${kind}-`)).slice(0, 2)
     if (pair.length < 2) continue
@@ -60,6 +76,7 @@ async function act(page: Page): Promise<boolean> {
     await page.getByTestId('crab-card').first().click()
     return true
   }
+  if (await takePairingDiscard(page)) return true
   if (await clickIfEnabled(page, 'action-draw')) return true
   if ((await clickIfEnabled(page, 'action-take-0')) || (await clickIfEnabled(page, 'action-take-1'))) return true
   if (await clickIfEnabled(page, 'declare-stop')) return true
