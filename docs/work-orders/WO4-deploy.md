@@ -11,7 +11,7 @@
 
 | 編號 | 測試 |
 |---|---|
-| S4-1 | 線上頁面的 `<meta name="commit">` 等於 `EXPECTED_SHA`（預設 `git rev-parse origin/main`） |
+| S4-1 | 線上頁面的 `<meta name="commit">` 等於 `EXPECTED_SHA`（預設 `git ls-remote origin refs/heads/main`） |
 | S4-2 | 兩個獨立瀏覽器 context 在線上網址建房、加入、開始，自動對打到出現遊戲結束畫面 |
 
 ## 需要尊上操作或同意的事

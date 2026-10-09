@@ -5,7 +5,7 @@ import { expect, test, createRoom, joinRoom, openHome } from '../e2e/helpers'
 const PAIR_KINDS = ['crab', 'boat', 'fish']
 
 function expectedSha(): string {
-  return process.env.EXPECTED_SHA ?? execSync('git rev-parse origin/main', { encoding: 'utf8' }).trim()
+  return process.env.EXPECTED_SHA ?? execSync('git ls-remote origin refs/heads/main', { encoding: 'utf8' }).split(/\s/)[0]
 }
 
 /** 線上測試驗的是對局流程，關掉動畫縮短整局時間 */
@@ -56,7 +56,7 @@ async function playPair(page: Page): Promise<boolean> {
   return false
 }
 
-/** 畫面在動作途中被新狀態取代時回傳 false，由主迴圈重新讀取畫面 */
+/** 動作逾時回傳 false，由主迴圈重新讀取畫面 */
 async function attempt(action: () => Promise<boolean>): Promise<boolean> {
   try {
     return await action()
@@ -89,7 +89,7 @@ test('[S4-1] 線上版本就是 main 的最新 commit', async ({ page }) => {
   await expect(page.locator('meta[name="commit"]')).toHaveAttribute('content', expectedSha())
 })
 
-test('[S4-2] 兩個不同瀏覽器在線上網址完成一整局', async ({ browser }) => {
+test('[S4-2] 兩個獨立瀏覽器 context 在線上網址完成一整局', async ({ browser }) => {
   const host = await openHome(browser)
   await disableAnimations(host)
   const code = await createRoom(host, '線上房主')
