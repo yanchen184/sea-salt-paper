@@ -70,4 +70,24 @@
     mask: var(--creature) center / contain no-repeat;
     -webkit-mask: var(--creature) center / contain no-repeat;
   }
+
+  .anim-pop {
+    animation: anim-pop 1.4s ease-out both;
+  }
+}
+
+@keyframes anim-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  15%,
+  80% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
 }

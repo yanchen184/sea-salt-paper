@@ -1,5 +1,6 @@
 import { buildDeck } from './cards'
-import { applyAction, createGame } from './game'
+import { applyAction, createGame, getLegalActions } from './game'
+import { randomInt } from './rng'
 import type { Action, Card, ErrorCode, GameState, Phase, PlayerSeat } from './types'
 
 const ALL_CARDS = buildDeck()
@@ -57,6 +58,7 @@ export function setup(opts: SetupOptions = {}): GameState {
     current,
     phase: opts.phase ?? 'actions',
     log: [],
+    events: [],
   }
 }
 
@@ -73,4 +75,42 @@ export function rejectCode(state: GameState, playerId: string, action: Action): 
 
 export function ids(list: readonly Card[]): string[] {
   return list.map((c) => c.id)
+}
+
+/** 從合法動作中隨機選一個；有可宣告時 30% 機率宣告 */
+export function randomLegalAction(s: GameState, rng: number): [Action, string, number] {
+  const actor = s.status === 'roundEnd' ? (s.players[0]?.id ?? '') : (s.players[s.current]?.id ?? '')
+  const legal = getLegalActions(s, actor)
+  const options: Action[] = []
+  if (legal.nextRound) options.push({ type: 'NEXT_ROUND' })
+  if (legal.drawDeck) options.push({ type: 'DRAW_DECK' })
+  for (const pile of legal.takeDiscard) options.push({ type: 'TAKE_DISCARD', pile })
+  if (legal.keepDrawn) {
+    for (const keepCardId of legal.keepDrawn.cardIds)
+      for (const discardPile of legal.keepDrawn.piles) options.push({ type: 'KEEP_DRAWN', keepCardId, discardPile })
+  }
+  const player = s.players[s.current]
+  for (const cardIds of legal.duos) {
+    const kinds = cardIds.map((id) => player?.hand.find((c) => c.id === id)?.kind)
+    const action: Extract<Action, { type: 'PLAY_DUO' }> = { type: 'PLAY_DUO', cardIds }
+    const pile = legal.crabPiles[0]
+    if (kinds[0] === 'crab' && pile !== undefined) action.crab = { pile }
+    if (kinds.includes('shark') && legal.stealTargets[0]) action.steal = { targetId: legal.stealTargets[0] }
+    options.push(action)
+  }
+  for (const cardId of legal.crabPick ?? []) options.push({ type: 'PICK_CRAB', cardId })
+  let r = rng
+  if (legal.declare) {
+    const [roll, next] = randomInt(r, 10)
+    r = next
+    if (roll < 3) {
+      const [kind, next2] = randomInt(r, 2)
+      return [{ type: 'DECLARE', kind: kind === 0 ? 'stop' : 'lastChance' }, actor, next2]
+    }
+  }
+  if (legal.endTurn) options.push({ type: 'END_TURN' })
+  const [i, next] = randomInt(r, options.length)
+  const action = options[i]
+  if (!action) throw new Error(`沒有合法動作：${JSON.stringify({ status: s.status, phase: s.phase, legal })}`)
+  return [action, actor, next]
 }

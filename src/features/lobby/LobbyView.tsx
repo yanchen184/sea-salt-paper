@@ -1,4 +1,4 @@
-import { MIN_PLAYERS } from '../../firebase/rooms'
+import { MAX_PLAYERS, MIN_PLAYERS } from '../../firebase/rooms'
 import type { Room } from '../../firebase/types'
 import { PlayerList } from './PlayerList'
 
@@ -7,12 +7,15 @@ interface LobbyViewProps {
   uid: string
   isOffline: (uid: string) => boolean
   onStart: () => void
+  onAddAi: () => void
+  onRemoveAi: (aiUid: string) => void
   onLeave: () => void
 }
 
-export function LobbyView({ room, uid, isOffline, onStart, onLeave }: LobbyViewProps) {
+export function LobbyView({ room, uid, isOffline, onStart, onAddAi, onRemoveAi, onLeave }: LobbyViewProps) {
   const isHost = room.hostId === uid
   const enough = room.players.length >= MIN_PLAYERS
+  const full = room.players.length >= MAX_PLAYERS
 
   return (
     <section className="space-y-5 rounded-2xl bg-surface p-6 shadow-sm">
@@ -23,10 +26,20 @@ export function LobbyView({ room, uid, isOffline, onStart, onLeave }: LobbyViewP
             {room.code}
           </p>
         </div>
-        <p className="text-sm text-ink-muted">{room.players.length} / 4 人</p>
+        <p className="text-sm text-ink-muted">{room.players.length} / {MAX_PLAYERS} 人</p>
       </header>
 
-      <PlayerList room={room} uid={uid} isOffline={isOffline} />
+      <PlayerList room={room} uid={uid} isOffline={isOffline} onRemoveAi={isHost ? onRemoveAi : undefined} />
+      {isHost && !full && (
+        <button
+          type="button"
+          data-testid="add-ai"
+          onClick={onAddAi}
+          className="w-full rounded-lg border border-dashed border-line px-4 py-2 text-sm font-medium text-ink hover:bg-accent/10"
+        >
+          ＋ 加入 AI 玩家
+        </button>
+      )}
 
       <footer className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center">
         {isHost ? (

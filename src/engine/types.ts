@@ -91,6 +91,26 @@ export interface LogEntry {
   text: string
 }
 
+export type DuoEffect = 'crab' | 'boat' | 'fish' | 'steal'
+
+/** 供所有玩家播放動畫的公開事件；seq 在同一場遊戲內遞增 */
+export type GameEvent =
+  | { seq: number; type: 'drawDeck'; playerId: string; cards: Card[] }
+  | { seq: number; type: 'keepDrawn'; playerId: string; discarded: Card; pile: PileIndex }
+  | { seq: number; type: 'takeDiscard'; playerId: string; card: Card; pile: PileIndex }
+  | {
+      seq: number
+      type: 'playDuo'
+      playerId: string
+      cards: [Card, Card]
+      effect: DuoEffect
+      crabPile: PileIndex | null
+      stealFrom: string | null
+      fishDrew: boolean
+    }
+  | { seq: number; type: 'pickCrab'; playerId: string; pile: PileIndex }
+  | { seq: number; type: 'declare'; playerId: string; kind: DeclareKind }
+
 export interface GameState {
   players: PlayerState[]
   /** index 0 是牌庫頂 */
@@ -115,6 +135,8 @@ export interface GameState {
   removed: Card[]
   kicked: KickedPlayer[]
   log: LogEntry[]
+  /** 最近 MAX_EVENTS 個事件 */
+  events: GameEvent[]
 }
 
 export type Action =

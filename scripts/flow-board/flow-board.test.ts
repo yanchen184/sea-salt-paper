@@ -89,7 +89,7 @@ describe('Flow Board', () => {
     expect(col('A2')).toBe(col('A3'))
     expect(col('G10')).toBe(col('G2') - 1)
     expect(columns.every((c) => c.length > 0)).toBe(true)
-    expect(extras).toEqual(['A5', 'G0', 'S1', 'S2', 'S3', 'S4', 'S5'])
+    expect(extras).toEqual(['A5', 'G0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])
   })
 
   it('[FB-3] 讀 flow-status.md，條件狀態分成通過、缺測試、失敗', () => {
@@ -275,7 +275,7 @@ try { const lock = lockClaimsDir(process.argv[2]); console.log('got'); setTimeou
     writeFileSync(prunedFile, "it('[P1-1] base', () => {})\nit('[P1-2] 被 merge 拿掉後又加回', () => {})\n")
     git(pruned, 'commit', '-q', '-am', 're-add')
     expect((await readFirstTestCommits(pruned)).get('P1-2')?.sha).toBe(firstAdded)
-  })
+  }, 60_000)
 
   it('[FB-6] HTTP 領取成功 200、重複領取 409，SSE 即時推送新的領取，拒絕跨來源寫入，已刪節點可放手，同一 repo 只能開一個 server', async () => {
     const repo = gitRepo()

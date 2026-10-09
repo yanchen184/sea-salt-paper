@@ -14,9 +14,72 @@ service cloud.firestore {
       return request.auth.uid in room.kickedUids;
     }
 
+    function isAi(uid) {
+      return uid.matches('^ai-[1-3]$');
+    }
+
+    // players[i].uid 與 playerUids[i] 一致，且沒有重複座位
+    function seatMatches(d, i) {
+      return d.playerUids.size() <= i || d.players[i].uid == d.playerUids[i];
+    }
+
+    function seatsConsistent(d) {
+      return d.players.size() == d.playerUids.size()
+        && d.playerUids.toSet().size() == d.playerUids.size()
+        && seatMatches(d, 0) && seatMatches(d, 1) && seatMatches(d, 2) && seatMatches(d, 3);
+    }
+
+    function aiSeat(d, i) {
+      return d.playerUids.size() <= i || isAi(d.playerUids[i]);
+    }
+
+    function seatRemovedAt(before, after, uid, i) {
+      return before.players.size() > i
+        && before.players[i].uid == uid
+        && after.players == before.players.removeAll([before.players[i]])
+        && after.playerUids == before.playerUids.removeAll([uid]);
+    }
+
+    // 拿掉 uid 的座位，其餘座位（順序與內容）不變；座位最多 4 個，逐位檢查
+    function seatRemoved(before, after, uid) {
+      return seatRemovedAt(before, after, uid, 0) || seatRemovedAt(before, after, uid, 1)
+        || seatRemovedAt(before, after, uid, 2) || seatRemovedAt(before, after, uid, 3);
+    }
+
+    function aiRemovedAt(before, after, i) {
+      return before.players.size() > i && isAi(before.players[i].uid) && seatRemovedAt(before, after, before.players[i].uid, i);
+    }
+
+    // 尾端加入一個 AI，原有座位不變
+    function aiAppended(before, after) {
+      let n = before.players.size();
+      return n < 4
+        && after.players.size() == n + 1
+        && after.players[0:n] == before.players
+        && isAi(after.players[n].uid)
+        && !(after.players[n].uid in before.playerUids)
+        && after.playerUids == before.playerUids.concat([after.players[n].uid]);
+    }
+
+    function isAiSeatChange(before, after) {
+      return before.status == 'lobby'
+        && (aiAppended(before, after)
+          || aiRemovedAt(before, after, 0) || aiRemovedAt(before, after, 1)
+          || aiRemovedAt(before, after, 2) || aiRemovedAt(before, after, 3));
+    }
+
+    function othersAreAi(room) {
+      let others = room.playerUids.removeAll([request.auth.uid]);
+      return (others.size() <= 0 || isAi(others[0]))
+        && (others.size() <= 1 || isAi(others[1]))
+        && (others.size() <= 2 || isAi(others[2]))
+        && others.size() <= 3;
+    }
+
     function isNewRoom(code) {
       let d = request.resource.data;
       return d.code == code
+        && !isAi(request.auth.uid)
         && d.hostId == request.auth.uid
         && d.status == 'lobby'
         && d.players.size() == 1
@@ -27,11 +90,29 @@ service cloud.firestore {
         && d.version == 0;
     }
 
+    // 單人遊戲：自己坐第 1 位，其餘全是 AI，直接開局
+    function isNewSoloRoom(code) {
+      let d = request.resource.data;
+      return d.code == code
+        && !isAi(request.auth.uid)
+        && d.hostId == request.auth.uid
+        && d.status == 'playing'
+        && d.playerUids.size() >= 2
+        && d.playerUids.size() <= 4
+        && d.playerUids[0] == request.auth.uid
+        && seatsConsistent(d)
+        && aiSeat(d, 1) && aiSeat(d, 2) && aiSeat(d, 3)
+        && d.kickedUids == []
+        && d.game != null
+        && d.version == 0;
+    }
+
     function isSelfJoin() {
       let before = resource.data;
       let after = request.resource.data;
       let count = before.players.size();
       return before.status == 'lobby'
+        && !isAi(request.auth.uid)
         && !isMember(before)
         && !isKicked(before)
         && after.diff(before).affectedKeys().hasOnly(['players', 'playerUids', 'version', 'updatedAt'])
@@ -58,8 +139,47 @@ service cloud.firestore {
         return after.kickedUids == before.kickedUids.concat([target])
           && target in before.playerUids
           && target != request.auth.uid
-          && after.playerUids == before.playerUids.removeAll([target])
+          && !isAi(target)
+          && seatRemoved(before, after, target)
           && isStale(target);
+      }
+
+      function seatOf(d, uid) {
+        return d.playerUids[0] == uid ? 0 : d.playerUids[1] == uid ? 1 : d.playerUids[2] == uid ? 2 : 3;
+      }
+
+      // 從房主座位往後數的距離
+      function distance(d, h, i) {
+        return (i - h + d.playerUids.size()) % d.playerUids.size();
+      }
+
+      // 座位 i 不在房主與呼叫者之間，或是 AI，或已離線
+      function seatYields(d, h, c, i) {
+        return d.playerUids.size() <= i
+          || distance(d, h, i) >= distance(d, h, c)
+          || isAi(d.playerUids[i])
+          || isStale(d.playerUids[i]);
+      }
+
+      function hasAiSeat(d) {
+        return (d.playerUids.size() > 1 && isAi(d.playerUids[1]))
+          || (d.playerUids.size() > 2 && isAi(d.playerUids[2]))
+          || (d.playerUids.size() > 3 && isAi(d.playerUids[3]))
+          || isAi(d.playerUids[0]);
+      }
+
+      // 有 AI 的房間房主離線超過 45 秒時，從房主座位往後第一位在線真人可以把房主改成自己
+      function isHostTakeover(before, after, changed) {
+        let h = seatOf(before, before.hostId);
+        let c = seatOf(before, request.auth.uid);
+        return changed.hasOnly(['hostId', 'version', 'updatedAt'])
+          && after.hostId == request.auth.uid
+          && !isAi(request.auth.uid)
+          && hasAiSeat(before)
+          && isStale(before.hostId)
+          && !isStale(request.auth.uid)
+          && seatYields(before, h, c, 0) && seatYields(before, h, c, 1)
+          && seatYields(before, h, c, 2) && seatYields(before, h, c, 3);
       }
 
       function isMemberUpdate() {
@@ -71,10 +191,12 @@ service cloud.firestore {
           && !isKicked(before)
           && changed.hasOnly(['status', 'game', 'players', 'playerUids', 'kickedUids', 'hostId', 'version', 'updatedAt'])
           && after.version == before.version + 1
-          && (byHost || !changed.hasAny(['hostId', 'kickedUids']))
+          && (byHost || !changed.hasAny(['kickedUids']))
+          && (byHost || !changed.hasAny(['hostId']) || isHostTakeover(before, after, changed))
           && (!changed.hasAny(['kickedUids']) || (byHost && isValidKick(before, after)))
-          && (!changed.hasAny(['playerUids']) || changed.hasAny(['kickedUids'])
-              || after.playerUids == before.playerUids.removeAll([request.auth.uid]));
+          && (!changed.hasAny(['players', 'playerUids']) || changed.hasAny(['kickedUids'])
+              || seatRemoved(before, after, request.auth.uid)
+              || (byHost && isAiSeatChange(before, after)));
       }
 
       allow read: if signedIn() && (
@@ -83,13 +205,13 @@ service cloud.firestore {
         || isMember(resource.data)
         || isKicked(resource.data)
       );
-      allow create: if signedIn() && isNewRoom(code);
+      allow create: if signedIn() && (isNewRoom(code) || isNewSoloRoom(code));
       allow update: if signedIn() && (
         isMemberUpdate()
         || isSelfJoin()
-        || (resource.data.status == 'finished' && isNewRoom(code))
+        || (resource.data.status == 'finished' && (isNewRoom(code) || isNewSoloRoom(code)))
       );
-      allow delete: if signedIn() && isMember(resource.data) && resource.data.playerUids.size() == 1;
+      allow delete: if signedIn() && isMember(resource.data) && othersAreAi(resource.data);
 
       match /presence/{uid} {
         function room() {

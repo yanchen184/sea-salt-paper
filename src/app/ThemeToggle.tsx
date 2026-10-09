@@ -11,7 +11,7 @@ export function ThemeToggle() {
   }
 
   return (
-    <fieldset className="fixed right-3 top-3 z-10 flex gap-1 rounded-full bg-surface/90 p-1 text-xs shadow-md ring-1 ring-line">
+    <fieldset className="flex gap-1 rounded-full bg-surface/90 p-1 text-xs shadow-md ring-1 ring-line">
       <legend className="sr-only">美術風格</legend>
       {THEMES.map((t) => (
         <label

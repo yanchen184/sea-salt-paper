@@ -3,6 +3,8 @@ import type { Action, GameState } from '../../engine'
 import { rooms } from '../../firebase/app'
 import type { Room } from '../../firebase/types'
 import { turnText } from './actionHints'
+import { AnimationLayer } from './anim/AnimationLayer'
+import { useAnimatedGame } from './anim/useAnimatedGame'
 import { MyPanel } from './MyPanel'
 import { PlayersPanel } from './PlayersPanel'
 import { GameOverPanel, ResultPanel } from './ResultPanel'
@@ -19,15 +21,17 @@ interface GameViewProps {
   onLeave: () => void
 }
 
-export function GameView({ room, game, uid, isOffline, run, onLeave }: GameViewProps) {
-  const [busy, setBusy] = useState(false)
+export function GameView({ room, game: latest, uid, isOffline, run, onLeave }: GameViewProps) {
+  const [sending, setSending] = useState(false)
+  const { shown: game, playing, done } = useAnimatedGame(latest)
+  const busy = sending || playing !== null
 
   async function perform(task: () => Promise<void>) {
-    setBusy(true)
+    setSending(true)
     try {
       await run(task)
     } finally {
-      setBusy(false)
+      setSending(false)
     }
   }
 
@@ -72,6 +76,7 @@ export function GameView({ room, game, uid, isOffline, run, onLeave }: GameViewP
         </>
       )}
       <GameLog game={game} />
+      {playing && <AnimationLayer key={playing.seq} event={playing} before={game} viewerId={uid} onDone={done} />}
     </section>
   )
 }

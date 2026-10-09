@@ -35,7 +35,9 @@ export type RoomErrorCode =
   | 'NOT_FINISHED'
   | 'GAME_IN_PROGRESS'
   | 'KICK_SELF'
+  | 'KICK_AI'
   | 'TARGET_ONLINE'
+  | 'CANNOT_CLAIM_HOST'
   | 'STALE_VERSION'
   | 'NO_FREE_CODE'
 
@@ -52,7 +54,9 @@ const MESSAGES: Record<RoomErrorCode, string> = {
   NOT_FINISHED: '遊戲還沒結束',
   GAME_IN_PROGRESS: '遊戲進行中不能離開房間',
   KICK_SELF: '不能把自己移出房間',
+  KICK_AI: 'AI 座位不能被移出',
   TARGET_ONLINE: '對方還在線上，不能移出',
+  CANNOT_CLAIM_HOST: '目前不能接手房主',
   STALE_VERSION: '畫面不是最新狀態，已重新整理，請再操作一次',
   NO_FREE_CODE: '暫時無法產生房號，請再試一次',
 }

@@ -5,6 +5,8 @@ import { rooms } from '../../firebase/app'
 import { isValidNickname, loadNickname, NICKNAME_MAX, normalizeNickname, saveNickname } from '../../lib/nickname'
 import { isRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from '../../lib/roomCode'
 
+const SOLO_AI_COUNTS = [1, 2, 3] as const
+
 interface HomePageProps {
   uid: string
   initialCode?: string
@@ -44,6 +46,10 @@ export function HomePage({ uid, initialCode = '', onEnter }: HomePageProps) {
 
   function create() {
     void run(() => rooms.createRoom({ uid, name }))
+  }
+
+  function playSolo(aiCount: number) {
+    void run(() => rooms.createSoloGame({ uid, name }, aiCount))
   }
 
   function join(event: FormEvent) {
@@ -114,6 +120,24 @@ export function HomePage({ uid, initialCode = '', onEnter }: HomePageProps) {
             加入
           </button>
         </form>
+      </section>
+
+      <section data-testid="solo" className="space-y-3 rounded-2xl bg-surface p-5 shadow-sm">
+        <h2 className="font-semibold text-heading">單人遊戲：和 AI 對戰</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {SOLO_AI_COUNTS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              data-testid={`solo-${n}`}
+              onClick={() => playSolo(n)}
+              disabled={!nameOk || busy}
+              className="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:text-ink-muted"
+            >
+              {n} 個 AI
+            </button>
+          ))}
+        </div>
       </section>
 
       <ErrorBanner message={error} onDismiss={() => setError(null)} />

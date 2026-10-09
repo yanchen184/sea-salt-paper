@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { applyAction, createGame, getLegalActions, removePlayer } from './game'
+import { applyAction, createGame, removePlayer } from './game'
 import { randomInt } from './rng'
-import { SEATS } from './test-helpers'
-import type { Action, GameState } from './types'
+import { randomLegalAction as chooseAction, SEATS } from './test-helpers'
+import type { GameState } from './types'
 
 function allCardIds(s: GameState): string[] {
   return [
@@ -12,44 +12,6 @@ function allCardIds(s: GameState): string[] {
     ...s.players.flatMap((p) => [...p.hand, ...p.field]),
     ...s.removed,
   ].map((c) => c.id)
-}
-
-/** 從合法動作中隨機選一個；有可宣告時 30% 機率宣告 */
-function chooseAction(s: GameState, rng: number): [Action, string, number] {
-  const actor = s.status === 'roundEnd' ? (s.players[0]?.id ?? '') : (s.players[s.current]?.id ?? '')
-  const legal = getLegalActions(s, actor)
-  const options: Action[] = []
-  if (legal.nextRound) options.push({ type: 'NEXT_ROUND' })
-  if (legal.drawDeck) options.push({ type: 'DRAW_DECK' })
-  for (const pile of legal.takeDiscard) options.push({ type: 'TAKE_DISCARD', pile })
-  if (legal.keepDrawn) {
-    for (const keepCardId of legal.keepDrawn.cardIds)
-      for (const discardPile of legal.keepDrawn.piles) options.push({ type: 'KEEP_DRAWN', keepCardId, discardPile })
-  }
-  const player = s.players[s.current]
-  for (const cardIds of legal.duos) {
-    const kinds = cardIds.map((id) => player?.hand.find((c) => c.id === id)?.kind)
-    const action: Extract<Action, { type: 'PLAY_DUO' }> = { type: 'PLAY_DUO', cardIds }
-    const pile = legal.crabPiles[0]
-    if (kinds[0] === 'crab' && pile !== undefined) action.crab = { pile }
-    if (kinds.includes('shark') && legal.stealTargets[0]) action.steal = { targetId: legal.stealTargets[0] }
-    options.push(action)
-  }
-  for (const cardId of legal.crabPick ?? []) options.push({ type: 'PICK_CRAB', cardId })
-  let r = rng
-  if (legal.declare) {
-    const [roll, next] = randomInt(r, 10)
-    r = next
-    if (roll < 3) {
-      const [kind, next2] = randomInt(r, 2)
-      return [{ type: 'DECLARE', kind: kind === 0 ? 'stop' : 'lastChance' }, actor, next2]
-    }
-  }
-  if (legal.endTurn) options.push({ type: 'END_TURN' })
-  const [i, next] = randomInt(r, options.length)
-  const action = options[i]
-  if (!action) throw new Error(`沒有合法動作：${JSON.stringify({ status: s.status, phase: s.phase, legal })}`)
-  return [action, actor, next]
 }
 
 function expectConserved(s: GameState): void {

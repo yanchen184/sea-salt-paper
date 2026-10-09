@@ -7,7 +7,9 @@ import type {
   ActionResult,
   Card,
   CardKind,
+  DuoEffect,
   ErrorCode,
+  GameEvent,
   GameState,
   LegalActions,
   PileIndex,
@@ -17,6 +19,7 @@ import type {
 
 export const DECLARE_MIN_POINTS = 7
 export const TARGET_SCORES: Readonly<Record<number, number>> = { 2: 40, 3: 35, 4: 30 }
+export const MAX_EVENTS = 20
 
 const ERROR_MESSAGES: Record<ErrorCode, string> = {
   UNKNOWN_PLAYER: '你不在這場遊戲中',
@@ -42,7 +45,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
 
 const PILE_NAMES = ['左', '右'] as const
 
-type DuoEffect = 'crab' | 'boat' | 'fish' | 'steal'
+type EventInput = GameEvent extends infer E ? (E extends GameEvent ? Omit<E, 'seq'> : never) : never
 
 function fail(code: ErrorCode): ActionError {
   return { code, message: ERROR_MESSAGES[code] }
@@ -70,6 +73,13 @@ function currentPlayer(s: GameState): PlayerState {
 
 function addLog(s: GameState, text: string): void {
   s.log.push({ round: s.round, text })
+}
+
+function addEvent(s: GameState, event: EventInput): void {
+  // 部署前建立的遊戲沒有 events 欄位
+  const events = s.events ?? []
+  const seq = (events[events.length - 1]?.seq ?? 0) + 1
+  s.events = [...events, { ...event, seq } as GameEvent].slice(-MAX_EVENTS)
 }
 
 function nonEmptyPiles(s: GameState): PileIndex[] {
@@ -139,6 +149,7 @@ export function createGame(players: PlayerSeat[], seed: number): GameState {
     removed: [],
     kicked: [],
     log: [],
+    events: [],
   }
   startRound(s, starter)
   return s
@@ -233,14 +244,17 @@ function drawDeck(s: GameState): ActionError | null {
   if (s.deck.length === 0) return fail('DECK_EMPTY')
   const player = currentPlayer(s)
   if (s.deck.length === 1) {
-    player.hand.push(...s.deck.splice(0, 1))
+    const drawn = s.deck.splice(0, 1)
+    player.hand.push(...drawn)
     s.phase = 'actions'
     addLog(s, `${player.name} 從牌庫抽了最後 1 張`)
+    addEvent(s, { type: 'drawDeck', playerId: player.id, cards: drawn })
     return null
   }
   s.pendingDraw = s.deck.splice(0, 2)
   s.phase = 'chooseDrawn'
   addLog(s, `${player.name} 從牌庫抽了 2 張`)
+  addEvent(s, { type: 'drawDeck', playerId: player.id, cards: [...s.pendingDraw] })
   return null
 }
 
@@ -259,6 +273,7 @@ function keepDrawn(s: GameState, keepCardId: string, pile: unknown): ActionError
   s.pendingDraw = []
   s.phase = 'actions'
   addLog(s, `${player.name} 留下 1 張，把${describeCard(other)}放到${PILE_NAMES[pile]}棄牌堆`)
+  addEvent(s, { type: 'keepDrawn', playerId: player.id, discarded: other, pile })
   return null
 }
 
@@ -271,6 +286,7 @@ function takeDiscard(s: GameState, pile: unknown): ActionError | null {
   player.hand.push(card)
   s.phase = 'actions'
   addLog(s, `${player.name} 拿走${PILE_NAMES[pile]}棄牌堆的${describeCard(card)}`)
+  addEvent(s, { type: 'takeDiscard', playerId: player.id, card, pile })
   return null
 }
 
@@ -311,6 +327,8 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
 
   player.hand = player.hand.filter((c) => c !== a && c !== b)
   player.field.push(a, b)
+  let fishDrew = false
+  let stealFrom: string | null = null
 
   switch (effect) {
     case 'crab': {
@@ -330,6 +348,7 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
     case 'fish':
       if (s.deck.length > 0) {
         player.hand.push(...s.deck.splice(0, 1))
+        fishDrew = true
         addLog(s, `${player.name} 打出魚對，從牌庫抽了 1 張`)
       } else {
         addLog(s, `${player.name} 打出魚對，牌庫已空，沒有效果`)
@@ -340,12 +359,14 @@ function playDuo(s: GameState, action: Extract<Action, { type: 'PLAY_DUO' }>): A
         const [i, rngState] = randomInt(s.rngState, target.hand.length)
         s.rngState = rngState
         player.hand.push(...target.hand.splice(i, 1))
+        stealFrom = target.id
         addLog(s, `${player.name} 打出鯊魚與游泳者，從 ${target.name} 手中偷了 1 張`)
       } else {
         addLog(s, `${player.name} 打出鯊魚與游泳者，沒有可偷的對手`)
       }
       break
   }
+  addEvent(s, { type: 'playDuo', playerId: player.id, cards: [a, b], effect, crabPile, stealFrom, fishDrew })
   return null
 }
 
@@ -357,6 +378,7 @@ function pickCrab(s: GameState, cardId: unknown): ActionError | null {
   const player = currentPlayer(s)
   player.hand.push(...pile.cards.splice(index, 1))
   addLog(s, `${player.name} 從${PILE_NAMES[s.crabPile]}棄牌堆挑了 1 張`)
+  addEvent(s, { type: 'pickCrab', playerId: player.id, pile: s.crabPile })
   s.phase = 'actions'
   s.crabPile = null
   return null
@@ -371,6 +393,7 @@ function declare(s: GameState, kind: unknown): ActionError | null {
 
   s.declaration = { kind, playerId: player.id }
   s.extraTurn = false
+  addEvent(s, { type: 'declare', playerId: player.id, kind })
   if (kind === 'stop') {
     addLog(s, `${player.name} 宣告 STOP`)
     finishRound(s)

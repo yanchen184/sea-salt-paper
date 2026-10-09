@@ -2,12 +2,16 @@ import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import type { GameState } from '../../src/engine'
 import { setup, type SetupOptions } from '../../src/engine/test-helpers'
+import { EMULATOR_PROJECT_ID, FIRESTORE_EMULATOR } from '../../src/firebase/emulator'
 import type { Room } from '../../src/firebase/types'
 
 let env: RulesTestEnvironment | undefined
 
 async function testEnv(): Promise<RulesTestEnvironment> {
-  env ??= await initializeTestEnvironment({ projectId: 'demo-sea-salt', firestore: { host: '127.0.0.1', port: 8085 } })
+  env ??= await initializeTestEnvironment({
+    projectId: EMULATOR_PROJECT_ID,
+    firestore: { host: FIRESTORE_EMULATOR.host, port: FIRESTORE_EMULATOR.port },
+  })
   return env
 }
 

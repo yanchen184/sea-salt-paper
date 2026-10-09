@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore'
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { applyAction } from '../../src/engine'
+import { applyAction, chooseAiAction } from '../../src/engine'
 import { RoomError, type Room } from '../../src/firebase/types'
 import { closeClients, newClient, rulesEnv, sameUserClient, type TestClient } from './client'
 
@@ -214,5 +214,150 @@ describe('踢出離線玩家', () => {
     const after = await readRoom(host, code)
     expect(after.status).toBe('finished')
     expect(after.game?.status).toBe('gameOver')
+  })
+})
+
+describe('AI 座位', () => {
+  it('[A6-1] 單人遊戲：建立房間後直接和 AI 開局，不經過大廳', async () => {
+    const host = await newClient()
+    const code = await host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 3)
+    const room = await readRoom(host, code)
+    expect(room.status).toBe('playing')
+    expect(room.version).toBe(0)
+    expect(room.players.map((p) => p.name)).toEqual(['Host', 'AI 小蟹', 'AI 小魚', 'AI 小鯊'])
+    expect(room.game?.players.map((p) => p.id)).toEqual(room.playerUids)
+    expect(await errorCode(host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 0))).toBe('BAD_PLAYER_COUNT')
+    expect(await errorCode(host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 4))).toBe('BAD_PLAYER_COUNT')
+  })
+
+  it('[A6-2] 大廳中只有房主能加入、移除 AI，合計最多 4 人，可以和 AI 開局', async () => {
+    const [host, b] = await Promise.all([newClient(), newClient()])
+    const code = await lobby(host, b)
+    expect(await errorCode(b.rooms.addAi(code, b.uid))).toBe('NOT_HOST')
+    await host.rooms.addAi(code, host.uid)
+    await host.rooms.addAi(code, host.uid)
+    expect(await errorCode(host.rooms.addAi(code, host.uid))).toBe('ROOM_FULL')
+    expect((await readRoom(host, code)).playerUids).toEqual([host.uid, b.uid, 'ai-1', 'ai-2'])
+
+    expect(await errorCode(b.rooms.removeAi(code, b.uid, 'ai-1'))).toBe('NOT_HOST')
+    await host.rooms.removeAi(code, host.uid, 'ai-1')
+    expect(await errorCode(host.rooms.removeAi(code, host.uid, b.uid))).toBe('NOT_MEMBER')
+    await host.rooms.startGame(code, host.uid)
+    const room = await readRoom(host, code)
+    expect(room.game?.players.map((p) => p.id)).toEqual([host.uid, b.uid, 'ai-2'])
+    expect(await errorCode(host.rooms.addAi(code, host.uid))).toBe('NOT_LOBBY')
+  })
+
+  it('[A6-3] AI 座位不能被踢', async () => {
+    const host = await newClient()
+    const code = await host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 1)
+    expect(await errorCode(host.rooms.kickPlayer(code, host.uid, 'ai-1'))).toBe('KICK_AI')
+  })
+
+  it('[A6-4] 最後一位真人離開時房間關閉；還有其他真人時照舊不能中途離開', async () => {
+    const host = await newClient()
+    const solo = await host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 2)
+    await host.rooms.leaveRoom(solo, host.uid)
+    expect((await getDoc(doc(host.db, 'rooms', solo))).exists()).toBe(false)
+
+    const b = await newClient()
+    const mixed = await lobby(host, b)
+    await host.rooms.addAi(mixed, host.uid)
+    await host.rooms.startGame(mixed, host.uid)
+    expect(await errorCode(host.rooms.leaveRoom(mixed, host.uid))).toBe('GAME_IN_PROGRESS')
+  })
+
+  it('[A6-4] 大廳房主離開時，房主交給下一位真人而不是 AI', async () => {
+    const [host, b] = await Promise.all([newClient(), newClient()])
+    const code = await host.rooms.createRoom({ uid: host.uid, name: 'Host' })
+    await host.rooms.addAi(code, host.uid)
+    await b.rooms.joinRoom(code, { uid: b.uid, name: 'B' })
+    await host.rooms.leaveRoom(code, host.uid)
+    const room = await readRoom(b, code)
+    expect(room.hostId).toBe(b.uid)
+    expect(room.playerUids).toEqual(['ai-1', b.uid])
+  })
+
+  it('[S6-1] 房主替 AI 出手走同一個 transaction，非房主被拒；單人對 AI 能打完整場', async () => {
+    const [host, other] = await Promise.all([newClient(), newClient()])
+    const mixed = await lobby(host, other)
+    await host.rooms.addAi(mixed, host.uid)
+    await host.rooms.startGame(mixed, host.uid)
+    expect(await errorCode(other.rooms.playAiTurn(mixed, other.uid, (await readRoom(other, mixed)).version))).toBe('NOT_HOST')
+
+    const code = await host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 1)
+
+    for (let step = 0; step < 2000; step++) {
+      const room = await readRoom(host, code)
+      const game = room.game
+      if (!game || room.status === 'finished') break
+      if (game.status === 'roundEnd') {
+        await host.rooms.sendAction(code, host.uid, { type: 'NEXT_ROUND' }, room.version)
+        continue
+      }
+      if (game.players[game.current]?.id === 'ai-1') {
+        await host.rooms.playAiTurn(code, host.uid, room.version)
+      } else {
+        const action = chooseAiAction(game, host.uid)
+        if (!action) throw new Error('真人沒有可做的動作')
+        await host.rooms.sendAction(code, host.uid, action, room.version)
+      }
+      expect((await readRoom(host, code)).version).toBe(room.version + 1)
+    }
+    const final = await readRoom(host, code)
+    expect(final.status).toBe('finished')
+    expect(final.game?.winnerId).not.toBeNull()
+  }, 120_000)
+
+  it('[S6-3] 房主離線超過 45 秒時，下一位在線真人接手房主並替 AI 出手；房主在線、非第一順位、沒有 AI 時被拒', async () => {
+    const [host, b, c] = await Promise.all([newClient(), newClient(), newClient()])
+    const code = await lobby(host, b, c)
+    await host.rooms.addAi(code, host.uid)
+    await host.rooms.startGame(code, host.uid)
+    for (const client of [host, b, c])
+      await setDoc(doc(client.db, 'rooms', code, 'presence', client.uid), { lastSeen: serverTimestamp() })
+    expect(await errorCode(b.rooms.claimHost(code, b.uid))).toBe('CANNOT_CLAIM_HOST')
+
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'rooms', code, 'presence', host.uid), { lastSeen: Timestamp.fromMillis(0) }),
+    )
+    expect(await errorCode(c.rooms.claimHost(code, c.uid))).toBe('CANNOT_CLAIM_HOST')
+
+    const humansOnly = await playing(host, b)
+    await setDoc(doc(b.db, 'rooms', humansOnly, 'presence', b.uid), { lastSeen: serverTimestamp() })
+    expect(await errorCode(b.rooms.claimHost(humansOnly, b.uid))).toBe('CANNOT_CLAIM_HOST')
+
+    const before = await readRoom(b, code)
+    await b.rooms.claimHost(code, b.uid)
+    const after = await readRoom(b, code)
+    expect(after.hostId).toBe(b.uid)
+    expect(after.version).toBe(before.version + 1)
+    expect(after.game).toEqual(before.game)
+
+    let room = after
+    while (room.game?.players[room.game.current]?.id !== 'ai-1') {
+      const current = currentClient(room, [host, b, c])
+      const action = room.game ? chooseAiAction(room.game, current.uid) : null
+      if (!action) throw new Error('沒有可做的動作')
+      await current.rooms.sendAction(code, current.uid, action, room.version)
+      room = await readRoom(b, code)
+    }
+    expect(await errorCode(host.rooms.playAiTurn(code, host.uid, room.version))).toBe('NOT_HOST')
+    await b.rooms.playAiTurn(code, b.uid, room.version)
+    expect((await readRoom(b, code)).version).toBe(room.version + 1)
+  })
+
+  it('[S6-2] version 已變或不是 AI 的回合時不寫入', async () => {
+    const host = await newClient()
+    const code = await host.rooms.createSoloGame({ uid: host.uid, name: 'Host' }, 1)
+    let room = await readRoom(host, code)
+    while (room.game?.players[room.game.current]?.id !== host.uid) {
+      await host.rooms.playAiTurn(code, host.uid, room.version)
+      room = await readRoom(host, code)
+    }
+    await host.rooms.playAiTurn(code, host.uid, room.version)
+    expect(await readRoom(host, code)).toEqual(room)
+    await host.rooms.playAiTurn(code, host.uid, room.version - 1)
+    expect(await readRoom(host, code)).toEqual(room)
   })
 })

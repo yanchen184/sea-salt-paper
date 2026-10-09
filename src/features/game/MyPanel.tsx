@@ -51,7 +51,7 @@ export function MyPanel({ game, uid, version, busy, onAction }: MyPanelProps) {
           {me.hand.map((c) => c.id).join(',')}
         </span>
       </div>
-      <div data-testid="my-hand" className="flex min-h-[6.5rem] flex-wrap gap-2 pt-2">
+      <div data-testid="my-hand" data-anim-zone="hand" className="flex min-h-[6.5rem] flex-wrap gap-2 pt-2">
         {me.hand.length === 0 && <span className="self-center text-sm text-ink-muted">手上沒有牌</span>}
         {me.hand.map((c) => (
           <CardView
@@ -90,7 +90,7 @@ function DrawnChoice({ game, legal, keepId, busy, onPick, onAction }: DrawnChoic
     return { enabled: true, reason: null }
   }
   return (
-    <div data-testid="drawn-choice" className="space-y-2 rounded-xl bg-notice p-3">
+    <div data-testid="drawn-choice" data-anim-zone="drawn" className="space-y-2 rounded-xl bg-notice p-3">
       <p className="text-sm font-medium text-notice-ink">從牌庫抽到這兩張：點選要留下的牌，另一張放到棄牌堆</p>
       <div className="flex gap-2 pt-2">
         {game.pendingDraw.map((c) => (

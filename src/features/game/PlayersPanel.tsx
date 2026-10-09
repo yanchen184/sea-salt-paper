@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { GameState, PlayerState } from '../../engine'
+import { isAiUid } from '../../firebase/aiSeats'
 import type { Room } from '../../firebase/types'
 import { CardBack, CardView } from './CardView'
 
@@ -63,6 +64,11 @@ function SeatRow({ player, seat, isHost, isMe, isCurrent, isDeclarer, offline, k
         </span>
         {isHost && <Badge className="bg-amber-100 text-amber-800">房主</Badge>}
         {isMe && <Badge className="bg-sky-100 text-sky-800">你</Badge>}
+        {isAiUid(player.id) && (
+          <Badge className="bg-violet-100 text-violet-800" testId="ai-badge">
+            AI
+          </Badge>
+        )}
         {isCurrent && <Badge className="bg-amber-400 text-amber-950">行動中</Badge>}
         {isDeclarer === 'lastChance' && (
           <Badge className="bg-rose-100 text-rose-800" testId="last-chance-badge">
@@ -78,13 +84,13 @@ function SeatRow({ player, seat, isHost, isMe, isCurrent, isDeclarer, offline, k
           總分 <span data-testid="player-score" className="font-bold text-heading">{player.score}</span>
         </span>
       </div>
-      <div className="flex items-center gap-2 text-xs text-ink-muted">
+      <div data-anim-zone={`seat-${player.id}`} className="flex items-center gap-2 text-xs text-ink-muted">
         <CardBack size="sm" label={String(player.hand.length)} />
         <span>
           手牌 <span data-testid="player-hand-count">{player.hand.length}</span> 張
         </span>
       </div>
-      <div data-testid="player-field" className="flex min-h-[3.5rem] flex-wrap gap-1">
+      <div data-testid="player-field" data-anim-zone={`field-${player.id}`} className="flex min-h-[3.5rem] flex-wrap gap-1">
         {player.field.length === 0 ? (
           <span className="self-center text-xs text-ink-muted">場上沒有牌</span>
         ) : (
