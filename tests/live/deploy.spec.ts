@@ -57,9 +57,9 @@ async function playPair(page: Page): Promise<boolean> {
 }
 
 /** 畫面在動作途中被新狀態取代時回傳 false，由主迴圈重新讀取畫面 */
-async function step(page: Page): Promise<boolean> {
+async function attempt(action: () => Promise<boolean>): Promise<boolean> {
   try {
-    return await act(page)
+    return await action()
   } catch (e) {
     if (e instanceof errors.TimeoutError) return false
     throw e
@@ -103,10 +103,10 @@ test('[S4-2] 兩個不同瀏覽器在線上網址完成一整局', async ({ brow
   const deadline = Date.now() + 24 * 60_000
   while ((await host.getByTestId('game-over').count()) === 0) {
     expect(Date.now(), '對局在時限內沒有結束').toBeLessThan(deadline)
-    let acted = await clickIfEnabled(host, 'next-round')
+    let acted = await attempt(() => clickIfEnabled(host, 'next-round'))
     for (const page of [host, guest]) {
       if (acted) break
-      if (/^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await step(page)
+      if (/^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await attempt(() => act(page))
     }
     await host.waitForTimeout(acted ? 150 : 400)
   }
@@ -127,8 +127,8 @@ test('[S4-3] 一個瀏覽器在線上網址開單人遊戲配 1 個 AI，打完�
   const deadline = Date.now() + 24 * 60_000
   while ((await page.getByTestId('game-over').count()) === 0) {
     expect(Date.now(), '對局在時限內沒有結束').toBeLessThan(deadline)
-    let acted = await clickIfEnabled(page, 'next-round')
-    if (!acted && /^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await step(page)
+    let acted = await attempt(() => clickIfEnabled(page, 'next-round'))
+    if (!acted && /^輪到你/.test((await page.getByTestId('turn-text').textContent()) ?? '')) acted = await attempt(() => act(page))
     await page.waitForTimeout(acted ? 150 : 400)
   }
 
