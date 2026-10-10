@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { getLegalActions, type Action, type Card, type GameState, type LegalActions, type PileIndex } from '../../engine'
+import type { Action, Card, GameState, LegalActions, PileIndex } from '../../engine'
 import { ActionButton } from './ActionButton'
 import {
   declareHint,
@@ -18,25 +17,19 @@ const PILES: PileIndex[] = [0, 1]
 interface MyPanelProps {
   game: GameState
   uid: string
-  version: number
+  legal: LegalActions
+  selected: string[]
   busy: boolean
+  onToggle: (id: string, max: number) => void
   onAction: (action: Action) => void
 }
 
-export function MyPanel({ game, uid, version, busy, onAction }: MyPanelProps) {
-  const [selection, setSelection] = useState<{ version: number; ids: string[] }>({ version, ids: [] })
-  const selected = selection.version === version ? selection.ids : []
-  const legal = getLegalActions(game, uid)
+export function MyPanel({ game, uid, legal, selected, busy, onToggle: toggle, onAction }: MyPanelProps) {
   const me = game.players.find((p) => p.id === uid)
   if (!me) return null
 
   const choosing = legal.isMyTurn && game.phase === 'chooseDrawn'
   const handSelectable = legal.isMyTurn && game.phase === 'actions'
-
-  function toggle(id: string, max: number) {
-    const ids = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id].slice(-max)
-    setSelection({ version, ids })
-  }
 
   return (
     <section aria-label="你的區域" className="space-y-4 rounded-2xl bg-surface p-4 shadow-sm">

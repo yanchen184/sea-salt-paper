@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import type { Action, GameState } from '../../engine'
+import { getLegalActions, type Action, type GameState } from '../../engine'
 import { rooms } from '../../firebase/app'
 import type { Room } from '../../firebase/types'
 import { turnText } from './actionHints'
 import { AnimationLayer } from './anim/AnimationLayer'
 import { useAnimatedGame } from './anim/useAnimatedGame'
 import { MyPanel } from './MyPanel'
+import { pileTargets } from './pileTargets'
 import { PlayersPanel } from './PlayersPanel'
 import { GameOverPanel, ResultPanel } from './ResultPanel'
 import { TablePanel } from './TablePanel'
@@ -23,8 +24,16 @@ interface GameViewProps {
 
 export function GameView({ room, game: latest, uid, isOffline, run, onLeave }: GameViewProps) {
   const [sending, setSending] = useState(false)
+  const [selection, setSelection] = useState<{ version: number; ids: string[] }>({ version: room.version, ids: [] })
   const { shown: game, playing, done } = useAnimatedGame(latest)
   const busy = sending || playing !== null
+  const selected = selection.version === room.version ? selection.ids : []
+  const legal = getLegalActions(game, uid)
+
+  function toggle(id: string, max: number) {
+    const ids = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id].slice(-max)
+    setSelection({ version: room.version, ids })
+  }
 
   async function perform(task: () => Promise<void>) {
     setSending(true)
@@ -71,8 +80,8 @@ export function GameView({ room, game: latest, uid, isOffline, run, onLeave }: G
       <PlayersPanel room={room} game={game} uid={uid} isOffline={isOffline} busy={busy} onKick={(target) => perform(() => rooms.kickPlayer(room.code, uid, target))} />
       {game.status === 'playing' && (
         <>
-          <TablePanel game={game} />
-          <MyPanel game={game} uid={uid} version={room.version} busy={busy} onAction={send} />
+          <TablePanel game={game} targets={pileTargets(game, legal, selected)} busy={busy} onAction={send} />
+          <MyPanel game={game} uid={uid} legal={legal} selected={selected} busy={busy} onToggle={toggle} onAction={send} />
         </>
       )}
       <GameLog game={game} />
