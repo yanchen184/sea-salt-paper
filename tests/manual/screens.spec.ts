@@ -100,6 +100,9 @@ test('02 輪到你：抽牌或拿棄牌', async ({ browser }) => {
   await expect(host.getByTestId('action-draw')).toBeEnabled()
   await shot(host, '06-my-turn')
   await shot(guest, '07-waiting')
+  await host.getByTestId('pile-1').hover()
+  await host.waitForTimeout(300)
+  await host.getByRole('region', { name: '桌面' }).screenshot({ path: `${OUT}/34-piles.png` })
 
   await host.getByTestId('action-draw').click()
   await expect(host.getByTestId('drawn-choice')).toBeVisible()

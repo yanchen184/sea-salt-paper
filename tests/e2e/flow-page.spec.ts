@@ -7,6 +7,7 @@ import { buildPublicBoard, exportBoard, resolveCommit } from '../../scripts/flow
 
 const REPO = join(import.meta.dirname, '../..')
 const COMMIT = '0123456789abcdef0123456789abcdef01234567'
+const STATUS: Record<string, string> = { '✅': 'pass', '🟡': 'miss', '⬜': 'miss', '❌': 'fail' }
 
 async function exported() {
   const out = mkdtempSync(join(tmpdir(), 'flow-page-'))
@@ -26,7 +27,7 @@ test('[S7-1] 匯出頁顯示與本機 Flow Board 相同的節點分欄、驗收�
   expect(await page.locator('#extras [data-node]').evaluateAll((els) => els.map((e) => e.getAttribute('data-node')))).toEqual(board.extras)
 
   const s8 = page.locator('[data-node="S8"]')
-  await expect(s8).toHaveAttribute('data-status', board.nodes.S8?.status === '✅' ? 'pass' : 'miss')
+  await expect(s8).toHaveAttribute('data-status', STATUS[board.nodes.S8?.status ?? '⬜'] ?? 'miss')
   await expect(s8.locator('.cond')).toHaveCount(board.nodes.S8?.conditions.length ?? 0)
   await s8.click()
   await expect(s8.locator('.detail')).toContainText(board.nodes.S8?.conditions[0]?.text ?? '')
