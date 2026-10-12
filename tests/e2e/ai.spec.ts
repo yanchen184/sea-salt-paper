@@ -23,7 +23,7 @@ test('[A6-1] 首頁選 AI 人數直接進入對局，不經過大廳', async ({ 
   const page = await openHome(browser)
   await playSolo(page, 2)
   await expect(page.getByTestId('lobby-code')).toHaveCount(0)
-  await expect(playerNames(page)).toHaveText(['單人', 'AI 小蟹', 'AI 小魚'])
+  await expect(playerNames(page)).toHaveText(['AI 小蟹', 'AI 小魚', '單人'])
   await expect(page.getByTestId('ai-badge')).toHaveCount(2)
 })
 

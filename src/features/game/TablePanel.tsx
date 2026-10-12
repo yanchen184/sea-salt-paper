@@ -14,7 +14,7 @@ interface TablePanelProps {
 
 export function TablePanel({ game, targets, busy, onAction }: TablePanelProps) {
   return (
-    <section aria-label="桌面" className="flex items-end justify-center gap-6 rounded-2xl bg-surface/75 p-4 text-ink ring-1 ring-line backdrop-blur-sm">
+    <section aria-label="桌面" className="flex items-end justify-center gap-4 rounded-2xl bg-surface/75 p-2 text-ink ring-1 ring-line backdrop-blur-sm sm:gap-8 sm:p-3">
       <figure data-anim-zone="deck" className="flex flex-col items-center gap-1">
         <PileButton testId="pile-deck" name="牌庫" target={targets.deck} busy={busy} onAction={onAction}>
           {game.deck.length > 0 ? <CardBack label="牌庫" /> : <EmptySlot label="空" />}

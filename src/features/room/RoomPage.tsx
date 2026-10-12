@@ -100,6 +100,7 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
   }
 
   let body
+  let inGame = false
   if (join.status === 'failed') body = <Notice text={join.message} />
   else if (!joined || room === undefined) body = <p className="text-center text-ink-muted">連線中…</p>
   else if (room === null) body = <Notice text="這個房間已不存在" />
@@ -116,13 +117,24 @@ export function RoomPage({ code, uid, nickname }: RoomPageProps) {
         onLeave={leave}
       />
     )
-  else if (room.game) body = <GameView room={room} game={room.game} uid={uid} isOffline={offline} run={run} onLeave={leave} />
+  else if (room.game) {
+    inGame = true
+    body = <GameView room={room} game={room.game} uid={uid} isOffline={offline} run={run} onLeave={leave} />
+  }
   else body = <Notice text="找不到對局資料" />
 
+  const banner = <ErrorBanner message={kicked ? null : error} onDismiss={() => setError(null)} />
+  if (inGame)
+    return (
+      <main className="mx-auto flex h-[100dvh] max-w-6xl flex-col overflow-hidden px-2 py-2 sm:px-4">
+        {body}
+        <div className="fixed inset-x-2 bottom-2 z-30 mx-auto max-w-xl">{banner}</div>
+      </main>
+    )
   return (
     <main className={`mx-auto flex min-h-screen flex-col gap-4 px-4 pb-8 pt-14 ${room?.status === 'lobby' || !room ? 'max-w-2xl' : 'max-w-4xl'}`}>
       {body}
-      <ErrorBanner message={kicked ? null : error} onDismiss={() => setError(null)} />
+      {banner}
     </main>
   )
 }

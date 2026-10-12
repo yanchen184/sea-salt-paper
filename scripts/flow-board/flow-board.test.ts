@@ -89,7 +89,7 @@ describe('Flow Board', () => {
     expect(col('A2')).toBe(col('A3'))
     expect(col('G10')).toBe(col('G2') - 1)
     expect(columns.every((c) => c.length > 0)).toBe(true)
-    expect(extras).toEqual(['A5', 'G0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9'])
+    expect(extras).toEqual(['A5', 'G0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'])
   })
 
   it('[FB-3] 讀 flow-status.md，條件狀態分成通過、缺測試、失敗', () => {

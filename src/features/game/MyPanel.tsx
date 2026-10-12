@@ -10,6 +10,8 @@ import {
   type Hint,
 } from './actionHints'
 import { CardView } from './CardView'
+import { Fan } from './Fan'
+import { SeatField, SeatTitle, type SeatInfo } from './PlayersPanel'
 
 const PILE_NAMES = ['左堆', '右堆'] as const
 const PILES: PileIndex[] = [0, 1]
@@ -17,6 +19,7 @@ const PILES: PileIndex[] = [0, 1]
 interface MyPanelProps {
   game: GameState
   uid: string
+  info: SeatInfo
   legal: LegalActions
   selected: string[]
   busy: boolean
@@ -24,7 +27,7 @@ interface MyPanelProps {
   onAction: (action: Action) => void
 }
 
-export function MyPanel({ game, uid, legal, selected, busy, onToggle: toggle, onAction }: MyPanelProps) {
+export function MyPanel({ game, uid, info, legal, selected, busy, onToggle: toggle, onAction }: MyPanelProps) {
   const me = game.players.find((p) => p.id === uid)
   if (!me) return null
 
@@ -32,40 +35,45 @@ export function MyPanel({ game, uid, legal, selected, busy, onToggle: toggle, on
   const handSelectable = legal.isMyTurn && game.phase === 'actions'
 
   return (
-    <section aria-label="你的區域" className="space-y-4 rounded-2xl bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h3 className="font-bold text-heading">
-          你的手牌 <span data-testid="hand-count">{me.hand.length}</span> 張
-        </h3>
-        <span className="text-sm text-ink-muted">
-          目前卡牌分 <span data-testid="my-points" className="font-bold text-heading">{myCardPoints(game, uid)}</span>
-        </span>
-        <span data-testid="hand-ids" className="sr-only">
-          {me.hand.map((c) => c.id).join(',')}
-        </span>
+    <section aria-label="你的區域" className="shrink-0 space-y-1 rounded-2xl bg-surface p-2 shadow-sm sm:p-3">
+      <div data-testid="player" data-current={info.isCurrent} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <SeatTitle player={me} info={info} />
+          <p className="text-xs text-ink-muted">
+            手牌 <span data-testid="hand-count">{me.hand.length}</span> 張 · 目前卡牌分{' '}
+            <span data-testid="my-points" className="font-bold text-heading">{myCardPoints(game, uid)}</span>
+            <span data-testid="hand-ids" className="sr-only">
+              {me.hand.map((c) => c.id).join(',')}
+            </span>
+          </p>
+        </div>
+        <SeatField player={me} className="w-full sm:w-auto sm:max-w-[50%]" />
       </div>
-      <div data-testid="my-hand" data-anim-zone="hand" className="flex min-h-[6.5rem] flex-wrap gap-2 pt-2">
-        {me.hand.length === 0 && <span className="self-center text-sm text-ink-muted">手上沒有牌</span>}
-        {me.hand.map((c) => (
-          <CardView
-            key={c.id}
-            card={c}
-            testId="hand-card"
-            selected={selected.includes(c.id)}
-            disabled={!handSelectable || busy}
-            onClick={() => toggle(c.id, 2)}
-          />
-        ))}
-      </div>
+      <Fan testId="my-hand" zone="hand" basis="basis-16 short:basis-12" className="min-h-[6.5rem] justify-center pt-2 short:min-h-[5rem]">
+        {me.hand.length === 0
+          ? [<span key="empty" className="self-center whitespace-nowrap text-sm text-ink-muted">手上沒有牌</span>]
+          : me.hand.map((c) => (
+              <CardView
+                key={c.id}
+                card={c}
+                testId="hand-card"
+                selected={selected.includes(c.id)}
+                disabled={!handSelectable || busy}
+                onClick={() => toggle(c.id, 2)}
+              />
+            ))}
+      </Fan>
 
-      {choosing && <DrawnChoice game={game} legal={legal} keepId={selected[0] ?? null} busy={busy} onPick={(id) => toggle(id, 1)} onAction={onAction} />}
-      {game.phase === 'crabPick' && <CrabPick game={game} legal={legal} busy={busy} onAction={onAction} />}
-
-      <ActionBar game={game} uid={uid} legal={legal} selected={selected} busy={busy} onAction={onAction} />
+      {choosing ? (
+        <DrawnChoice game={game} legal={legal} keepId={selected[0] ?? null} busy={busy} onPick={(id) => toggle(id, 1)} onAction={onAction} />
+      ) : game.phase === 'crabPick' ? (
+        <CrabPick game={game} legal={legal} busy={busy} onAction={onAction} />
+      ) : (
+        <ActionBar game={game} uid={uid} legal={legal} selected={selected} busy={busy} onAction={onAction} />
+      )}
     </section>
   )
 }
-
 interface DrawnChoiceProps {
   game: GameState
   legal: LegalActions
@@ -83,14 +91,12 @@ function DrawnChoice({ game, legal, keepId, busy, onPick, onAction }: DrawnChoic
     return { enabled: true, reason: null }
   }
   return (
-    <div data-testid="drawn-choice" data-anim-zone="drawn" className="space-y-2 rounded-xl bg-notice p-3">
-      <p className="text-sm font-medium text-notice-ink">從牌庫抽到這兩張：點選要留下的牌，另一張放到棄牌堆</p>
-      <div className="flex gap-2 pt-2">
+    <div data-testid="drawn-choice" data-anim-zone="drawn" className="space-y-1 rounded-xl bg-notice p-2">
+      <p className="text-xs font-medium text-notice-ink sm:text-sm">從牌庫抽到這兩張：點選要留下的牌，另一張放到棄牌堆</p>
+      <div className="flex flex-wrap items-end gap-2 pt-1">
         {game.pendingDraw.map((c) => (
           <CardView key={c.id} card={c} testId="drawn-card" selected={keepId === c.id} disabled={busy} onClick={() => onPick(c.id)} />
         ))}
-      </div>
-      <div className="flex flex-wrap gap-3">
         {PILES.map((pile) => (
           <ActionButton
             key={pile}
@@ -112,15 +118,15 @@ function CrabPick({ game, legal, busy, onAction }: { game: GameState; legal: Leg
   if (pile === null) return null
   const name = game.players[game.current]?.name ?? ''
   if (!legal.crabPick)
-    return <p className="rounded-xl bg-notice p-3 text-sm text-notice-ink">{`${name} 正在從${PILE_NAMES[pile]}挑一張牌`}</p>
+    return <p className="rounded-xl bg-notice p-2 text-sm text-notice-ink">{`${name} 正在從${PILE_NAMES[pile]}挑一張牌`}</p>
   return (
-    <div data-testid="crab-pick" className="space-y-2 rounded-xl bg-notice p-3">
-      <p className="text-sm font-medium text-notice-ink">{`螃蟹效果：從${PILE_NAMES[pile]}挑一張入手（其他人看不到）`}</p>
-      <div className="flex flex-wrap gap-2">
+    <div data-testid="crab-pick" className="space-y-1 rounded-xl bg-notice p-2">
+      <p className="text-xs font-medium text-notice-ink sm:text-sm">{`螃蟹效果：從${PILE_NAMES[pile]}挑一張入手（其他人看不到）`}</p>
+      <Fan basis="basis-16 short:basis-12" className="pt-1">
         {game.discards[pile].cards.map((c) => (
           <CardView key={c.id} card={c} testId="crab-card" disabled={busy} onClick={() => onAction({ type: 'PICK_CRAB', cardId: c.id })} />
         ))}
-      </div>
+      </Fan>
     </div>
   )
 }
@@ -138,13 +144,13 @@ function ActionBar({ game, uid, legal, selected, busy, onAction }: ActionBarProp
   if (game.status !== 'playing') return null
   const quiet = !legal.isMyTurn
   return (
-    <div className="space-y-2 border-t border-line pt-3">
+    <div className="space-y-1 border-t border-line pt-2">
       {quiet && (
         <p data-testid="wait-hint" className="text-sm text-ink-muted">
           {drawDeckHint(game, legal).reason}
         </p>
       )}
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
         <ActionButton testId="action-draw" hideReason={quiet} hint={drawDeckHint(game, legal)} busy={busy} onClick={() => onAction({ type: 'DRAW_DECK' })}>
           抽牌庫
         </ActionButton>

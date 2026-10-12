@@ -154,7 +154,8 @@ test('[A5-3] 房主踢出離線玩家後，其他人變成少 1 人的對局，�
 
   await thirdSeat.getByTestId('kick-player').click()
   await thirdSeat.getByTestId('kick-player').click()
-  for (const page of [host, second]) await expect(playerNames(page)).toHaveText(['房主', '二號'])
+  await expect(playerNames(host)).toHaveText(['二號', '房主'])
+  await expect(playerNames(second)).toHaveText(['房主', '二號'])
   await expect(second.getByTestId('game-log')).toContainText('三號 被房主移出遊戲')
 
   await third.context().setOffline(false)

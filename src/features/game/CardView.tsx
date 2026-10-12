@@ -4,21 +4,25 @@ import { COLOR_CLASSES, CREATURE_URLS } from './cardStyle'
 
 interface CardViewProps {
   card: Card
-  size?: 'md' | 'sm'
+  size?: CardSize
   selected?: boolean
   onClick?: () => void
   disabled?: boolean
   testId?: string
 }
 
+export type CardSize = 'md' | 'sm' | 'xs'
+
 const SIZES = {
-  md: 'h-24 w-16 text-xs',
+  md: 'h-24 w-16 text-xs short:h-[4.5rem] short:w-12 short:text-[10px]',
   sm: 'h-14 w-10 text-[10px]',
+  xs: 'h-10 w-7 text-[8px]',
 }
 
 const ART_SIZES = {
-  md: 'h-9 w-9',
+  md: 'h-9 w-9 short:h-7 short:w-7',
   sm: 'h-6 w-6',
+  xs: 'h-4 w-4',
 }
 
 export function CardView({ card, size = 'md', selected = false, onClick, disabled = false, testId }: CardViewProps) {
@@ -60,15 +64,15 @@ export function CardView({ card, size = 'md', selected = false, onClick, disable
   )
 }
 
-export function CardBack({ size = 'md', label }: { size?: 'md' | 'sm'; label?: string }) {
+export function CardBack({ size = 'md', label, testId = 'card-back' }: { size?: CardSize; label?: string; testId?: string }) {
   return (
-    <div data-testid="card-back" className={`card-back flex shrink-0 items-center justify-center rounded-lg font-bold text-white ${SIZES[size]}`}>
+    <div data-testid={testId} className={`card-back flex shrink-0 items-center justify-center rounded-lg font-bold text-white ${SIZES[size]}`}>
       {label && <span className="rounded bg-black/45 px-1.5 py-0.5">{label}</span>}
     </div>
   )
 }
 
-export function EmptySlot({ size = 'md', label }: { size?: 'md' | 'sm'; label: string }) {
+export function EmptySlot({ size = 'md', label }: { size?: CardSize; label: string }) {
   return (
     <div className={`flex shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-line text-ink-muted ${SIZES[size]}`}>{label}</div>
   )

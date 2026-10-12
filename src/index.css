@@ -74,6 +74,30 @@
   .anim-pop {
     animation: anim-pop 1.4s ease-out both;
   }
+
+  .picking-wobble {
+    animation: picking 1.6s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+  }
+
+  .picking-wobble + .picking-wobble {
+    animation-delay: -0.8s;
+  }
+}
+
+@keyframes picking {
+  from {
+    transform: rotate(-6deg);
+  }
+  to {
+    transform: translateY(-4px) rotate(6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picking-wobble {
+    animation: none;
+  }
 }
 
 @keyframes anim-pop {

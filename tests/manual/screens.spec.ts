@@ -107,6 +107,8 @@ test('02 輪到你：抽牌或拿棄牌', async ({ browser }) => {
   await host.getByTestId('action-draw').click()
   await expect(host.getByTestId('drawn-choice')).toBeVisible()
   await shot(host, '08-drawn-choice')
+  await expect(guest.getByTestId('picking')).toBeVisible()
+  await shot(guest, '35-opponent-picking')
   await host.locator('[data-testid="drawn-card"][data-card-id="fish-2"]').click()
   await shot(host, '09-drawn-selected')
   await host.getByTestId('discard-to-0').click()

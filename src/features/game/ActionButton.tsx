@@ -30,12 +30,12 @@ export function ActionButton({ hint, busy, onClick, testId, tone = 'primary', hi
         title={hint.reason ?? undefined}
         aria-describedby={caption ? reasonId : undefined}
         onClick={onClick}
-        className={`rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted disabled:ring-0 ${TONES[tone]}`}
+        className={`rounded-lg px-3 py-1.5 text-xs font-semibold sm:text-sm shadow-sm transition disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted disabled:ring-0 ${TONES[tone]}`}
       >
         {children}
       </button>
       {caption && (
-        <span id={reasonId} data-testid={reasonId} className="max-w-[12rem] text-[11px] leading-tight text-ink-muted">
+        <span id={reasonId} data-testid={reasonId} className="max-w-[10rem] text-[10px] leading-tight text-ink-muted">
           {caption}
         </span>
       )}

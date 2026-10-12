@@ -5,6 +5,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        short: { raw: '(max-height: 700px)' },
+      },
       colors: {
         surface: token('surface'),
         ink: { DEFAULT: token('ink'), muted: token('ink-muted') },
