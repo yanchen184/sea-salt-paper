@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 process.env.VITE_COMMIT_SHA ??= 'dev'
 
 export default defineConfig({
-  base: '/sea-salt-paper/',
+  base: process.env.BASE_PATH ?? '/sea-salt-paper/',
   plugins: [react()],
   test: {
     include: ['src/**/*.test.ts'],

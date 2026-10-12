@@ -3,7 +3,7 @@
 ## 技術棧
 
 React 19 + TypeScript (strict) + Vite + Tailwind CSS v3 + Firebase（Auth 匿名登入、Firestore）。
-測試：Vitest（引擎）、Playwright（E2E，接 Firebase Emulator）。部署：GitHub Actions → GitHub Pages，路由用 hash（`#/room/ABCD`）。
+測試：Vitest（引擎）、Playwright（E2E，接 Firebase Emulator）。部署：push main 觸發兩支 workflow，`deploy.yml` → GitHub Pages（`yanchen184.github.io/sea-salt-paper/`），`deploy-salt.yml` → Cloudflare Pages 專案 `salt`（`salt.yanchen.app`，build 時 `BASE_PATH=/`）。路由用 hash（`#/room/ABCD`）。
 
 ## 分層
 
@@ -103,4 +103,4 @@ getLegalActions(state: GameState, playerId: string): LegalActions
 
 ## 公開流程圖
 
-`npm run build` 最後執行 `scripts/flow-board/export.ts`，把 Flow Board 的看板資料嵌進 `board.html`，輸出 `dist/flow/index.html`，部署後在 `/sea-salt-paper/flow/`。頁面唯讀、不連任何 API，標示建置時的 commit（`VITE_COMMIT_SHA` → `GITHUB_SHA` → `git rev-parse HEAD`）。
+`npm run build` 最後執行 `scripts/flow-board/export.ts`，把 Flow Board 的看板資料嵌進 `board.html`，輸出 `dist/flow/index.html`，部署後在站台根路徑下的 `flow/`。頁面唯讀、不連任何 API，標示建置時的 commit（`VITE_COMMIT_SHA` → `GITHUB_SHA` → `git rev-parse HEAD`）。
